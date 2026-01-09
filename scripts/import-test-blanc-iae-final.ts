@@ -110,10 +110,11 @@ function parseTestBlancFile(filePath: string): QuestionData[] {
         // 2. OU le texte est long (> 30 caractères) ET on n'a pas de question en cours
         // 3. OU le texte est long ET on a déjà collecté au moins 3 choix (fin de la question précédente)
         // 4. OU le texte se termine par "?" (c'est probablement une question)
+        const currentQuestion = currentQuestionNum !== null ? questionMap.get(currentQuestionNum) : undefined
         const isQuestion = 
           num > 5 || 
           (text.length > 30 && currentQuestionNum === null) ||
-          (text.length > 30 && currentQuestionNum !== null && questionMap.get(currentQuestionNum)?.choices.length >= 3) ||
+          (text.length > 30 && currentQuestion !== undefined && currentQuestion.choices.length >= 3) ||
           text.trim().endsWith('?')
         
         if (isQuestion) {

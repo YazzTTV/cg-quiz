@@ -57,20 +57,24 @@ function parseMarkdownFile(filePath: string): QuestionData[] {
         continue
       }
       
-      // Détecter les choix de réponse (format: - **1.** texte ou * 1. texte)
+      // Détecter les choix de réponse (format: - **1.** texte)
       const choiceMatch = trimmed.match(/^[-*]\s*\*\*?(\d+)\.\*\*?\s*(.+)$/)
       if (choiceMatch) {
         const order = parseInt(choiceMatch[1], 10)
         const text = choiceMatch[2].trim()
         
-        // Vérifier si c'est la bonne réponse en regardant la ligne suivante
+        // Chercher la réponse correcte dans les lignes suivantes (format: ✅ **Réponse correcte : X.**)
         let isCorrect = false
-        // Chercher la réponse correcte dans les lignes suivantes
-        for (let j = i + 1; j < Math.min(i + 10, lines.length); j++) {
+        for (let j = i + 1; j < Math.min(i + 15, lines.length); j++) {
           const nextLine = lines[j].trim()
-          if (nextLine.includes('✅') && nextLine.includes(`**${order}.`)) {
-            isCorrect = true
-            break
+          // Chercher "✅ **Réponse correcte : X.**" où X est le numéro du choix
+          const correctMatch = nextLine.match(/✅\s*\*\*Réponse correcte\s*:\s*(\d+)\.\*\*/i)
+          if (correctMatch) {
+            const correctOrder = parseInt(correctMatch[1], 10)
+            if (correctOrder === order) {
+              isCorrect = true
+              break
+            }
           }
         }
         

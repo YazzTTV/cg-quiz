@@ -10,11 +10,14 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = session.user.id
+    const body = await req.json()
+    const testNumber = body.testNumber || 1 // Par défaut Test Blanc 1
 
-    // Récupérer toutes les questions du test blanc
-    const testBlancTag = await prisma.tag.findUnique({ where: { name: 'Test Blanc 1' } })
+    // Récupérer toutes les questions du test blanc spécifié
+    const tagName = `Test Blanc ${testNumber}`
+    const testBlancTag = await prisma.tag.findUnique({ where: { name: tagName } })
     if (!testBlancTag) {
-      return NextResponse.json({ error: 'Aucune question de test blanc trouvée' }, { status: 404 })
+      return NextResponse.json({ error: `Aucune question de ${tagName} trouvée` }, { status: 404 })
     }
 
     const questions = await prisma.question.findMany({

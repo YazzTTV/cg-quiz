@@ -44,12 +44,30 @@ export default function TestBlancPage() {
   const [results, setResults] = useState<TestResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [showConfirmFinish, setShowConfirmFinish] = useState(false)
+  const [selectedTest, setSelectedTest] = useState<number | null>(null)
+  const [availableTests, setAvailableTests] = useState<number[]>([])
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login')
     }
   }, [status, router])
+
+  // Charger les tests disponibles
+  useEffect(() => {
+    const loadAvailableTests = async () => {
+      try {
+        const res = await fetch('/api/test-blanc/list')
+        if (res.ok) {
+          const data = await res.json()
+          setAvailableTests(data.tests || [])
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des tests:', error)
+      }
+    }
+    loadAvailableTests()
+  }, [])
 
   // Charger l'état depuis localStorage
   useEffect(() => {
@@ -112,10 +130,17 @@ export default function TestBlancPage() {
   }, [questions, answers, currentQuestionIndex, startTime, isTestStarted])
 
   const startTest = async () => {
+    if (!selectedTest) {
+      alert('Veuillez sélectionner un test')
+      return
+    }
+
     setLoading(true)
     try {
       const res = await fetch('/api/test-blanc/start', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testNumber: selectedTest }),
       })
 
       const data = await res.json()

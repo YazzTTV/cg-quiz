@@ -116,13 +116,14 @@ function parseTestBlancFile(filePath: string): QuestionData[] {
         // 4. OU le texte est long ET on n'a pas de question en cours
         // 5. OU le texte est long ET on a déjà collecté au moins 3 choix
         const prevWasQuestion = prevLine.match(/^(\d+)\./) && parseInt(prevLine.match(/^(\d+)\./)?.[1] || '0', 10) > 5
+        const currentQuestion = currentQuestionNum !== null ? questionMap.get(currentQuestionNum) : undefined
         
         const isQuestion = 
           num > 5 || 
           (text.length > 25 && text.trim().endsWith('?')) ||
           (text.length > 25 && prevWasQuestion) ||
           (text.length > 25 && currentQuestionNum === null) ||
-          (text.length > 25 && currentQuestionNum !== null && questionMap.get(currentQuestionNum)?.choices.length >= 3)
+          (text.length > 25 && currentQuestion !== undefined && currentQuestion.choices.length >= 3)
         
         if (isQuestion) {
           // Sauvegarder la question précédente si elle existe
