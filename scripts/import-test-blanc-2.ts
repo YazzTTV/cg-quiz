@@ -86,9 +86,21 @@ function parseMarkdownFile(filePath: string): QuestionData[] {
         continue
       }
       
-      // Si ce n'est pas un choix et que le prompt est vide, c'est le prompt
-      if (!currentQuestion.prompt && trimmed.length > 0) {
-        currentQuestion.prompt = trimmed
+      // Si ce n'est pas un choix et qu'on est dans une question, construire le prompt
+      if (currentQuestion && trimmed.length > 0) {
+        // Ignorer les lignes qui sont clairement des séparateurs ou des réponses
+        if (trimmed.match(/^[-*]\s*\*\*?\d+\./)) {
+          // C'est un choix, on a fini le prompt
+          continue
+        }
+        
+        // Ajouter au prompt
+        if (!currentQuestion.prompt) {
+          currentQuestion.prompt = trimmed
+        } else {
+          // Continuer le prompt sur plusieurs lignes
+          currentQuestion.prompt += ' ' + trimmed
+        }
       }
     }
   }
@@ -157,69 +169,31 @@ async function main() {
     }
     
     try {
-      // Vérifier si la question existe déjà
-      const existing = await prisma.question.findFirst({
-        where: {
-          prompt: {
-            equals: qData.prompt.trim(),
-            mode: 'insensitive',
+      // Toujours créer une nouvelle question (les doublons sont gérés par la suppression préalable)
+      await prisma.question.create({
+        data: {
+          prompt: qData.prompt,
+          comprehensionText: qData.comprehensionText,
+          status: 'APPROVED',
+          source: 'IAE Message Test Blanc 2',
+          choices: {
+            create: qData.choices
+              .sort((a, b) => a.order - b.order)
+              .map((choice) => ({
+                text: choice.text,
+                isCorrect: choice.isCorrect,
+                order: choice.order,
+              })),
           },
           tags: {
-            some: {
+            create: {
               tagId: testBlancTag.id,
             },
           },
         },
       })
-      
-      if (existing) {
-        // Mettre à jour la question existante
-        await prisma.question.update({
-          where: { id: existing.id },
-          data: {
-            prompt: qData.prompt,
-            comprehensionText: qData.comprehensionText,
-            choices: {
-              deleteMany: {},
-              create: qData.choices
-                .sort((a, b) => a.order - b.order)
-                .map((choice) => ({
-                  text: choice.text,
-                  isCorrect: choice.isCorrect,
-                  order: choice.order,
-                })),
-          },
-        },
-      })
-        updated++
-        console.log(`🔄 Question ${qData.number} mise à jour`)
-      } else {
-        // Créer la nouvelle question
-        await prisma.question.create({
-          data: {
-            prompt: qData.prompt,
-            comprehensionText: qData.comprehensionText,
-            status: 'APPROVED',
-            source: 'IAE Message Test Blanc 2',
-            choices: {
-              create: qData.choices
-                .sort((a, b) => a.order - b.order)
-                .map((choice) => ({
-                  text: choice.text,
-                  isCorrect: choice.isCorrect,
-                  order: choice.order,
-                })),
-            },
-            tags: {
-              create: {
-                tagId: testBlancTag.id,
-              },
-            },
-          },
-        })
-        created++
-        console.log(`✅ Question ${qData.number} créée`)
-      }
+      created++
+      console.log(`✅ Question ${qData.number} créée`)
     } catch (error) {
       console.error(`❌ Erreur lors de la création de la question ${qData.number}:`, error)
       skipped++

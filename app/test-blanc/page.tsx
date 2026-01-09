@@ -247,17 +247,43 @@ export default function TestBlancPage() {
               <p className="text-lg">
                 <strong>Durée :</strong> 2 heures 25 minutes
               </p>
-              <p className="text-lg">
-                <strong>Nombre de questions :</strong> Variable selon le test
-              </p>
               <p className="text-gray-600 dark:text-gray-400">
-                Ce test blanc vous permet de vous entraîner dans les conditions réelles de l'examen IAE.
-                Vous avez 2 heures 25 minutes pour répondre à toutes les questions.
+                Sélectionnez le test blanc que vous souhaitez passer. Chaque test contient 150 questions
+                réparties en Culture générale (1-50), Français (51-100) et Anglais (121-170).
               </p>
             </div>
+            
+            <div className="space-y-3 mb-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Choisir un test :
+              </label>
+              {availableTests.length > 0 ? (
+                <div className="space-y-2">
+                  {availableTests.map((testNum) => (
+                    <button
+                      key={testNum}
+                      onClick={() => setSelectedTest(testNum)}
+                      className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-colors ${
+                        selectedTest === testNum
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-gray-300 dark:border-gray-600 hover:border-blue-300'
+                      }`}
+                    >
+                      <div className="font-semibold">Test Blanc {testNum}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        150 questions - 2h25
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 dark:text-gray-400">Chargement des tests disponibles...</p>
+              )}
+            </div>
+
             <button
               onClick={startTest}
-              disabled={loading}
+              disabled={loading || !selectedTest}
               className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Chargement...' : 'Commencer le test'}

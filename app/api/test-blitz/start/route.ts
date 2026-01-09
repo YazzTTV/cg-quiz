@@ -16,33 +16,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Durée invalide. Doit être 30 ou 60 minutes' }, { status: 400 })
     }
 
-    // Récupérer toutes les questions du test blanc
-    const testBlancTag = await prisma.tag.findUnique({ where: { name: 'Test Blanc 1' } })
-    if (!testBlancTag) {
+    // Récupérer toutes les questions des deux tests blancs
+    const testBlanc1Tag = await prisma.tag.findUnique({ where: { name: 'Test Blanc 1' } })
+    const testBlanc2Tag = await prisma.tag.findUnique({ where: { name: 'Test Blanc 2' } })
+    
+    if (!testBlanc1Tag && !testBlanc2Tag) {
       return NextResponse.json({ error: 'Aucune question de test blanc trouvée' }, { status: 404 })
-    }
-
-    const allQuestions = await prisma.question.findMany({
-      where: {
-        status: 'APPROVED',
-        tags: {
-          some: {
-            tagId: testBlancTag.id,
-          },
-        },
-      },
-      include: {
-        choices: {
-          orderBy: { order: 'asc' },
-        },
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    })
-
-    if (allQuestions.length === 0) {
-      return NextResponse.json({ error: 'Aucune question de test blanc disponible' }, { status: 404 })
     }
 
     // Calculer le nombre de questions par partie selon la durée
@@ -50,13 +29,84 @@ export async function POST(req: NextRequest) {
     // Prorata : 10 questions par partie pour 30min, 20 questions par partie pour 1h
     const questionsPerPart = duration === 30 ? 10 : 20
 
-    // Séparer les questions par partie (ordre de création)
-    // Questions 1-50 : Culture générale (indices 0-49)
-    // Questions 51-100 : Français (indices 50-99)
-    // Questions 121-170 : Anglais (indices 100-148)
-    const cultureQuestions = allQuestions.slice(0, 50)
-    const francaisQuestions = allQuestions.slice(50, 100)
-    const anglaisQuestions = allQuestions.slice(100, 150)
+    // Récupérer les questions de chaque test séparément
+    // Chaque test a : Culture (1-50), Français (51-100), Anglais (121-170)
+    
+    let test1Questions: Array<{
+      id: string
+      prompt: string
+      comprehensionText: string | null
+      choices: Array<{ id: string; text: string; order: number }>
+    }> = []
+    let test2Questions: Array<{
+      id: string
+      prompt: string
+      comprehensionText: string | null
+      choices: Array<{ id: string; text: string; order: number }>
+    }> = []
+    
+    if (testBlanc1Tag) {
+      test1Questions = await prisma.question.findMany({
+        where: {
+          status: 'APPROVED',
+          tags: {
+            some: {
+              tagId: testBlanc1Tag.id,
+            },
+          },
+        },
+        include: {
+          choices: {
+            orderBy: { order: 'asc' },
+          },
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      })
+    }
+    
+    if (testBlanc2Tag) {
+      test2Questions = await prisma.question.findMany({
+        where: {
+          status: 'APPROVED',
+          tags: {
+            some: {
+              tagId: testBlanc2Tag.id,
+            },
+          },
+        },
+        include: {
+          choices: {
+            orderBy: { order: 'asc' },
+          },
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      })
+    }
+    
+    if (test1Questions.length === 0 && test2Questions.length === 0) {
+      return NextResponse.json({ error: 'Aucune question de test blanc disponible' }, { status: 404 })
+    }
+    
+    // Séparer chaque test par partie (ordre de création = ordre du fichier)
+    // Culture : premières 50 questions (indices 0-49)
+    // Français : questions 51-100 (indices 50-99)
+    // Anglais : questions 121-170 (indices 100-149)
+    const test1Culture = test1Questions.slice(0, 50)
+    const test1Francais = test1Questions.slice(50, 100)
+    const test1Anglais = test1Questions.slice(100, 150)
+    
+    const test2Culture = test2Questions.slice(0, 50)
+    const test2Francais = test2Questions.slice(50, 100)
+    const test2Anglais = test2Questions.slice(100, 150)
+    
+    // Combiner les questions de même type des deux tests
+    const cultureQuestions = [...test1Culture, ...test2Culture]
+    const francaisQuestions = [...test1Francais, ...test2Francais]
+    const anglaisQuestions = [...test1Anglais, ...test2Anglais]
 
     // Sélectionner aléatoirement le bon nombre de questions par partie
     const shuffle = <T>(array: T[]): T[] => {
