@@ -10,6 +10,7 @@ const submitTestSchema = z.object({
       choiceId: z.string(),
     })
   ),
+  questionTypes: z.record(z.string(), z.boolean()).optional(), // Map questionId -> isLogique
   startTime: z.string(),
   endTime: z.string(),
 })
@@ -36,23 +37,40 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Récupérer l'ordre des questions pour identifier les questions de logique
-    // Les questions de logique sont aux indices 100-119 (questions 101-120)
-    const questionOrderMap = new Map<string, number>()
+    // Identifier les questions de logique depuis questionTypes passé par le client
+    // Sinon, utiliser l'ordre de création comme fallback
+    const questionTypesMap = data.questionTypes || {}
+    
+    // Fallback : identifier par ordre de création si questionTypes n'est pas fourni
     const allTestQuestions = await prisma.question.findMany({
       where: {
         id: { in: questionIds },
       },
       select: {
         id: true,
+        source: true,
       },
       orderBy: {
         createdAt: 'asc',
       },
     })
     
-    allTestQuestions.forEach((q, index) => {
-      questionOrderMap.set(q.id, index)
+    // Créer un map pour identifier les questions de logique
+    const isLogiqueMap = new Map<string, boolean>()
+    allTestQuestions.forEach((q) => {
+      // Utiliser questionTypes si disponible, sinon utiliser l'ordre de création
+      if (questionTypesMap[q.id] !== undefined) {
+        isLogiqueMap.set(q.id, questionTypesMap[q.id])
+      } else {
+        // Fallback : identifier par source et ordre (questions 101-120 sont logique)
+        // Pour chaque source, les questions aux indices 100-119 sont logique
+        // On doit grouper par source pour calculer l'index local
+        // Pour simplifier, on va utiliser une approche basée sur le source
+        const source = q.source || ''
+        // Les questions de logique ont généralement "Logique" dans le source
+        const isLogique = source.toLowerCase().includes('logique')
+        isLogiqueMap.set(q.id, isLogique)
+      }
     })
 
     // Calculer les résultats avec points différenciés
@@ -75,9 +93,8 @@ export async function POST(req: NextRequest) {
 
       const isCorrect = selectedChoice?.isCorrect || false
       
-      // Identifier si c'est une question de logique (indices 100-119)
-      const questionIndex = questionOrderMap.get(answer.questionId) ?? -1
-      const isLogique = questionIndex >= 100 && questionIndex < 120
+      // Identifier si c'est une question de logique
+      const isLogique = isLogiqueMap.get(answer.questionId) ?? false
       
       // Points : 2 pour questions normales, 5 pour questions de logique
       const points = isLogique ? 5 : 2
@@ -97,9 +114,9 @@ export async function POST(req: NextRequest) {
     })
 
     const totalQuestions = data.answers.length
-    // Calculer le score sur 400 points (150 questions × 2 points + 20 questions × 5 points = 300 + 100 = 400)
+    // Calculer le score proportionnel sur 400 points
     const score = totalPoints > 0 ? Math.round((pointsObtenus / totalPoints) * 100) : 0
-    const scoreSur400 = pointsObtenus // Score brut sur 400
+    const scoreSur400 = pointsObtenus // Score brut (proportionnel)
 
     // Calculer le temps écoulé
     const startTime = new Date(data.startTime)
@@ -109,7 +126,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       score, // Pourcentage
-      scoreSur400, // Score sur 400 points
+      scoreSur400, // Score brut (proportionnel)
       pointsObtenus,
       totalPoints,
       correctCount,
@@ -121,8 +138,7 @@ export async function POST(req: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Données invalides', details: error.issues }, { status: 400 })
     }
-    console.error('Error in /api/test-blanc/submit:', error)
+    console.error('Error in /api/test-blitz/submit:', error)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
 }
-

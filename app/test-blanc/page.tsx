@@ -20,6 +20,9 @@ type Question = {
 
 type TestResult = {
   score: number
+  scoreSur400?: number
+  pointsObtenus?: number
+  totalPoints?: number
   correctCount: number
   totalQuestions: number
   results: Array<{
@@ -38,7 +41,7 @@ export default function TestBlancPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [startTime, setStartTime] = useState<Date | null>(null)
-  const [timeRemaining, setTimeRemaining] = useState(2 * 60 * 60 + 25 * 60) // 2h25 en secondes
+  const [timeRemaining, setTimeRemaining] = useState(3 * 60 * 60) // 3h en secondes
   const [isTestStarted, setIsTestStarted] = useState(false)
   const [isTestFinished, setIsTestFinished] = useState(false)
   const [results, setResults] = useState<TestResult | null>(null)
@@ -79,7 +82,7 @@ export default function TestBlancPage() {
           const savedStartTime = new Date(parsed.startTime)
           const now = new Date()
           const elapsed = Math.floor((now.getTime() - savedStartTime.getTime()) / 1000)
-          const remaining = 2 * 60 * 60 + 25 * 60 - elapsed
+          const remaining = 3 * 60 * 60 - elapsed
 
           if (remaining > 0 && parsed.questions && parsed.questions.length > 0) {
             setQuestions(parsed.questions)
@@ -149,7 +152,7 @@ export default function TestBlancPage() {
         setQuestions(data.questions)
         setStartTime(new Date())
         setIsTestStarted(true)
-        setTimeRemaining(2 * 60 * 60 + 25 * 60)
+        setTimeRemaining(3 * 60 * 60)
         setAnswers({})
         setCurrentQuestionIndex(0)
       } else {
@@ -245,11 +248,11 @@ export default function TestBlancPage() {
             <h1 className="text-3xl font-bold mb-6">Test Blanc IAE</h1>
             <div className="space-y-4 mb-6">
               <p className="text-lg">
-                <strong>Durée :</strong> 2 heures 25 minutes
+                <strong>Durée :</strong> 3 heures
               </p>
               <p className="text-gray-600 dark:text-gray-400">
-                Sélectionnez le test blanc que vous souhaitez passer. Chaque test contient 150 questions
-                réparties en Culture générale (1-50), Français (51-100) et Anglais (121-170).
+                Sélectionnez le test blanc que vous souhaitez passer. Chaque test contient 170 questions
+                réparties en Culture générale (1-50), Français (51-100), Logique (101-120) et Anglais (121-170).
               </p>
             </div>
             
@@ -271,7 +274,7 @@ export default function TestBlancPage() {
                     >
                       <div className="font-semibold">Test Blanc {testNum}</div>
                       <div className="text-sm text-gray-600 dark:text-gray-400">
-                        150 questions - 2h25
+                        170 questions - 3h
                       </div>
                     </button>
                   ))}
@@ -307,6 +310,11 @@ export default function TestBlancPage() {
                   <div className="text-5xl font-bold text-blue-600 dark:text-blue-400 mb-2">
                     {results.score}%
                   </div>
+                  {results.scoreSur400 !== undefined && (
+                    <div className="text-2xl font-semibold text-blue-700 dark:text-blue-300 mb-2">
+                      {results.scoreSur400} / 400 points
+                    </div>
+                  )}
                   <div className="text-xl text-gray-700 dark:text-gray-300">
                     {results.correctCount} / {results.totalQuestions} réponses correctes
                   </div>

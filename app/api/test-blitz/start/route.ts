@@ -25,12 +25,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Calculer le nombre de questions par partie selon la durée
-    // Test normal : 150 questions pour 145 min (2h25)
-    // Prorata : 10 questions par partie pour 30min, 20 questions par partie pour 1h
-    const questionsPerPart = duration === 30 ? 10 : 20
+    // Test normal : 170 questions pour 180 min (3h)
+    // Prorata : 8 questions par partie pour 30min, 15 questions par partie pour 1h
+    // 4 parties : Culture, Français, Logique, Anglais
+    const questionsPerPart = duration === 30 ? 8 : 15
 
     // Récupérer les questions de chaque test séparément
-    // Chaque test a : Culture (1-50), Français (51-100), Anglais (121-170)
+    // Chaque test a : Culture (1-50), Français (51-100), Logique (101-120), Anglais (121-170)
     
     let test1Questions: Array<{
       id: string
@@ -94,18 +95,22 @@ export async function POST(req: NextRequest) {
     // Séparer chaque test par partie (ordre de création = ordre du fichier)
     // Culture : premières 50 questions (indices 0-49)
     // Français : questions 51-100 (indices 50-99)
-    // Anglais : questions 121-170 (indices 100-149)
+    // Logique : questions 101-120 (indices 100-119)
+    // Anglais : questions 121-170 (indices 120-169)
     const test1Culture = test1Questions.slice(0, 50)
     const test1Francais = test1Questions.slice(50, 100)
-    const test1Anglais = test1Questions.slice(100, 150)
+    const test1Logique = test1Questions.slice(100, 120)
+    const test1Anglais = test1Questions.slice(120, 170)
     
     const test2Culture = test2Questions.slice(0, 50)
     const test2Francais = test2Questions.slice(50, 100)
-    const test2Anglais = test2Questions.slice(100, 150)
+    const test2Logique = test2Questions.slice(100, 120)
+    const test2Anglais = test2Questions.slice(120, 170)
     
     // Combiner les questions de même type des deux tests
     const cultureQuestions = [...test1Culture, ...test2Culture]
     const francaisQuestions = [...test1Francais, ...test2Francais]
+    const logiqueQuestions = [...test1Logique, ...test2Logique]
     const anglaisQuestions = [...test1Anglais, ...test2Anglais]
 
     // Sélectionner aléatoirement le bon nombre de questions par partie
@@ -120,17 +125,22 @@ export async function POST(req: NextRequest) {
 
     const selectedCulture = shuffle(cultureQuestions).slice(0, questionsPerPart)
     const selectedFrancais = shuffle(francaisQuestions).slice(0, questionsPerPart)
+    const selectedLogique = shuffle(logiqueQuestions).slice(0, questionsPerPart)
     const selectedAnglais = shuffle(anglaisQuestions).slice(0, questionsPerPart)
 
-    // Combiner toutes les questions sélectionnées dans l'ordre : Culture, Français, Anglais
+    // Combiner toutes les questions sélectionnées dans l'ordre : Culture, Français, Logique, Anglais
     // (sans mélanger l'ordre final pour garder la structure du test)
-    const selectedQuestions = [...selectedCulture, ...selectedFrancais, ...selectedAnglais]
+    const selectedQuestions = [...selectedCulture, ...selectedFrancais, ...selectedLogique, ...selectedAnglais]
 
+    // Créer un Set des IDs de questions de logique pour identification rapide
+    const logiqueQuestionIds = new Set([...selectedLogique].map(q => q.id))
+    
     // Retourner les questions avec seulement les IDs (sans les bonnes réponses)
     const questionsForTest = selectedQuestions.map((q) => ({
       id: q.id,
       prompt: q.prompt,
       comprehensionText: q.comprehensionText || null,
+      isLogique: logiqueQuestionIds.has(q.id), // Identifier les questions de logique
       choices: q.choices.map((c) => ({
         id: c.id,
         text: c.text,

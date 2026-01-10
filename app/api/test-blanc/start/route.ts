@@ -29,9 +29,17 @@ export async function POST(req: NextRequest) {
           },
         },
       },
-      include: {
+      select: {
+        id: true,
+        prompt: true,
+        comprehensionText: true,
         choices: {
           orderBy: { order: 'asc' },
+          select: {
+            id: true,
+            text: true,
+            order: true,
+          },
         },
       },
       orderBy: {
@@ -44,13 +52,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Garder les questions dans l'ordre du fichier (ordre de création = ordre du markdown)
-    // Pas de mélange pour respecter l'ordre : Culture (1-50), Français (51-100), Anglais (121-170)
+    // Pas de mélange pour respecter l'ordre : Culture (1-50), Français (51-100), Logique (101-120), Anglais (121-170)
 
     // Retourner les questions avec seulement les IDs (sans les bonnes réponses)
     const questionsForTest = questions.map((q) => ({
       id: q.id,
       prompt: q.prompt,
-      comprehensionText: q.comprehensionText || null,
+      comprehensionText: q.comprehensionText ?? null,
       choices: q.choices.map((c) => ({
         id: c.id,
         text: c.text,

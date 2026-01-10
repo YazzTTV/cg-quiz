@@ -14,11 +14,12 @@
     "db:fix-format": "tsx scripts/fix-questions-format.ts",
     "db:fix-bad-answers": "tsx scripts/fix-bad-answers.ts",
     "db:import-all": "tsx scripts/import-all-questions.ts",
-    "postinstall": "node scripts/fix-prisma-client.js"
+    "postinstall": "prisma generate && node scripts/fix-prisma-client.js"
   },
   "dependencies": {
     "@prisma/client": "^6.19.1",
     "@types/bcrypt": "^6.0.0",
+    "@vercel/analytics": "^1.6.1",
     "bcrypt": "^6.0.0",
     "clsx": "^2.1.1",
     "csv-parse": "^6.1.0",

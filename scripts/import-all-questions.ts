@@ -212,41 +212,10 @@ function parseHTMLQuestions(filePath: string): Array<{
 }
 
 // Fonction pour formater les réponses en phrases complètes
+// DÉSACTIVÉE : Les réponses doivent rester exactement comme dans les fichiers sources
 function formatAnswer(text: string, question?: string): string {
-  let formatted = text.trim()
-
-  // Si la réponse est très courte, la transformer en phrase
-  if (formatted.length < 15) {
-    // Si c'est un nombre seul
-    if (/^\d+$/.test(formatted)) {
-      if (question?.includes('année') || question?.includes('date')) {
-        formatted = `C'était en ${formatted}`
-      } else if (question?.includes('taux') || question?.includes('pourcentage')) {
-        formatted = `Le taux est de ${formatted}%`
-      } else {
-        formatted = `La réponse est ${formatted}`
-      }
-    }
-    // Si c'est un nom propre
-    else if (formatted === formatted.charAt(0).toUpperCase() + formatted.slice(1).toLowerCase() && 
-             !formatted.includes(' ') && formatted.length > 3) {
-      formatted = `C'est ${formatted}`
-    }
-    // Sinon, ajouter "C'est" si approprié
-    else if (!formatted.toLowerCase().startsWith('c\'est') && 
-             !formatted.toLowerCase().startsWith('le ') && 
-             !formatted.toLowerCase().startsWith('la ') && 
-             !formatted.toLowerCase().startsWith('les ')) {
-      formatted = `C'est ${formatted}`
-    }
-  }
-
-  // S'assurer que la réponse commence par une majuscule
-  if (formatted.length > 0) {
-    formatted = formatted.charAt(0).toUpperCase() + formatted.slice(1)
-  }
-
-  return formatted
+  // Retourner le texte exact tel qu'il est dans le fichier source, sans modification
+  return text.trim()
 }
 
 async function main() {

@@ -15,11 +15,15 @@ type Question = {
   id: string
   prompt: string
   comprehensionText?: string | null
+  isLogique?: boolean
   choices: Choice[]
 }
 
 type TestResult = {
   score: number
+  scoreSur400?: number
+  pointsObtenus?: number
+  totalPoints?: number
   correctCount: number
   totalQuestions: number
   results: Array<{
@@ -93,11 +97,20 @@ export default function TestBlitzPage() {
         choiceId,
       }))
 
-      const res = await fetch('/api/test-blanc/submit', {
+      // Créer un map questionTypes pour identifier les questions de logique
+      const questionTypes: Record<string, boolean> = {}
+      questions.forEach((q) => {
+        if (q.isLogique !== undefined) {
+          questionTypes[q.id] = q.isLogique
+        }
+      })
+
+      const res = await fetch('/api/test-blitz/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           answers: answersArray,
+          questionTypes,
           startTime: startTime.toISOString(),
           endTime: new Date().toISOString(),
         }),
@@ -119,7 +132,7 @@ export default function TestBlitzPage() {
       setLoading(false)
       setShowConfirmFinish(false)
     }
-  }, [startTime, answers])
+  }, [startTime, answers, questions])
 
   // Timer
   useEffect(() => {
@@ -231,8 +244,9 @@ export default function TestBlitzPage() {
               </p>
               <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  <strong>Test normal :</strong> 150 questions en 2h25<br />
-                  <strong>Mode Blitz :</strong> Questions sélectionnées au prorata pour une durée réduite
+                  <strong>Test normal :</strong> 170 questions en 3h (Culture, Français, Logique, Anglais)<br />
+                  <strong>Mode Blitz :</strong> Questions sélectionnées au prorata pour une durée réduite<br />
+                  <strong>30 min :</strong> 8 questions par partie (32 total) • <strong>1h :</strong> 15 questions par partie (60 total)
                 </p>
               </div>
             </div>
@@ -242,7 +256,7 @@ export default function TestBlitzPage() {
                 disabled={loading}
                 className="w-full px-6 py-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-lg font-semibold"
               >
-                {loading ? 'Chargement...' : '⚡ 30 minutes (30 questions)'}
+                {loading ? 'Chargement...' : '⚡ 30 minutes (32 questions)'}
               </button>
               <button
                 onClick={() => startTest(60)}
@@ -271,6 +285,11 @@ export default function TestBlitzPage() {
                   <div className="text-5xl font-bold text-purple-600 dark:text-purple-400 mb-2">
                     {results.score}%
                   </div>
+                  {results.scoreSur400 !== undefined && (
+                    <div className="text-2xl font-semibold text-purple-700 dark:text-purple-300 mb-2">
+                      {results.scoreSur400} / {results.totalPoints || 400} points
+                    </div>
+                  )}
                   <div className="text-xl text-gray-700 dark:text-gray-300">
                     {results.correctCount} / {results.totalQuestions} réponses correctes
                   </div>
