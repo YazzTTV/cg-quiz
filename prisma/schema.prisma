@@ -1,0 +1,141 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum QuestionStatus {
+  APPROVED
+  PENDING
+  REJECTED
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String
+  name            String?
+  mascot          String?   // 'owl', 'lion', 'monkey', 'dolphin', 'bear'
+  winStreak       Int       @default(0)
+  lastActivityDate DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  createdQuestions     Question[]          @relation("QuestionCreator")
+  userQuestionStates   UserQuestionState[]
+  reportedQuestions    Report[]
+
+  @@map("users")
+}
+
+model Question {
+  id                String         @id @default(uuid())
+  prompt            String
+  explanation       String?
+  comprehensionText String?
+  difficulty        Int?
+  source            String?
+  status            QuestionStatus @default(PENDING)
+  createdByUserId   String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  // Relations
+  createdBy         User?              @relation("QuestionCreator", fields: [createdByUserId], references: [id])
+  choices           Choice[]
+  userQuestionStates UserQuestionState[]
+  tags              QuestionTag[]
+  reports           Report[]
+
+  @@index([status])
+  @@map("questions")
+}
+
+model Choice {
+  id         String   @id @default(uuid())
+  questionId String
+  text       String
+  isCorrect  Boolean
+  order      Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+  @@map("choices")
+}
+
+model UserQuestionState {
+  id                  String    @id @default(uuid())
+  userId              String
+  questionId          String
+  timesSeen           Int       @default(0)
+  timesCorrect        Int       @default(0)
+  lastAnsweredAt      DateTime?
+  lastAnswerWasCorrect Boolean?
+  nextReviewAt        DateTime?
+  suspended           Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+  @@index([userId, nextReviewAt])
+  @@index([questionId])
+  @@map("user_question_states")
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  questions QuestionTag[]
+
+  @@map("tags")
+}
+
+model QuestionTag {
+  id         String   @id @default(uuid())
+  questionId String
+  tagId      String
+  createdAt  DateTime @default(now())
+
+  // Relations
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, tagId])
+  @@index([questionId])
+  @@index([tagId])
+  @@map("question_tags")
+}
+
+model Report {
+  id         String   @id @default(uuid())
+  userId     String
+  questionId String
+  reason     String
+  createdAt  DateTime @default(now())
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+  @@map("reports")
+}
