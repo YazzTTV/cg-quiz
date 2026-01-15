@@ -7,6 +7,7 @@ type ScoreEstimateBadgeProps = {
   accuracy: number
   durationMinutes: number
   testType: 'blanc' | 'blitz'
+  size?: 'default' | 'compact'
 }
 
 // Fonction pour déterminer la couleur du score estimé
@@ -89,9 +90,16 @@ const getEligibleIAE = (score: number): { message: string; style: string; bgColo
   }
 }
 
-export default function ScoreEstimateBadge({ score, accuracy, durationMinutes, testType }: ScoreEstimateBadgeProps) {
+export default function ScoreEstimateBadge({
+  score,
+  accuracy,
+  durationMinutes,
+  testType,
+  size = 'default',
+}: ScoreEstimateBadgeProps) {
   const [isAnimating, setIsAnimating] = useState(true)
   const [displayScore, setDisplayScore] = useState(0)
+  const isCompact = size === 'compact'
 
   useEffect(() => {
     // Animation du score qui monte progressivement
@@ -119,12 +127,57 @@ export default function ScoreEstimateBadge({ score, accuracy, durationMinutes, t
   const eligibleInfo = getEligibleIAE(score)
   const badgeEmoji = score >= 330 ? '🏆' : score >= 200 ? '🎯' : score >= 100 ? '📚' : '💪'
 
+  const nextGoal = (() => {
+    if (score < 332) return { target: 332, label: 'la Sorbonne' }
+    if (score < 360) return { target: 360, label: 'les meilleures IAE' }
+    return { target: null, label: '' }
+  })()
+
+  const containerSpacing = isCompact ? 'p-2 mb-3' : 'p-6 mb-6'
+  const badgeMargin = isCompact ? 'mb-2' : 'mb-4'
+  const labelSize = isCompact ? 'text-[11px]' : 'text-sm'
+  const emojiSize = isCompact ? 'text-2xl' : 'text-6xl'
+  const emojiScale = isCompact ? 'scale-110 rotate-6' : 'scale-125 rotate-12'
+  const scoreSize = isCompact ? 'text-2xl' : 'text-6xl'
+  const denominatorSize = isCompact ? 'text-sm' : 'text-2xl'
+  const statSize = isCompact ? 'text-[11px]' : 'text-sm'
+  const statGap = isCompact ? 'gap-2' : 'gap-4'
+  const statPadding = isCompact ? 'px-2 py-0.5' : 'px-3 py-1'
+  const messagePadding = isCompact ? 'p-2' : 'p-4'
+  const messageClamp = isCompact ? 'line-clamp-2' : ''
+  const animationClass = isAnimating && !isCompact ? 'scale-105 shadow-2xl' : 'scale-100 shadow-lg'
+  const showParticles = isAnimating && !isCompact
+
+  if (isCompact) {
+    return (
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className={`rounded-lg border-2 ${eligibleInfo.bgColor} p-3 flex flex-col items-center justify-center text-center min-h-[110px]`}>
+          <div className="text-[11px] text-gray-600 dark:text-gray-400">Score estimé</div>
+          <div className={`text-2xl font-bold ${scoreColor}`}>{displayScore}</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">/ 400</div>
+          <div className="mt-1 text-[11px] text-gray-600 dark:text-gray-400">Précision {accuracy}%</div>
+        </div>
+        <div className="rounded-lg border-2 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700 p-3 flex flex-col items-center justify-center text-center min-h-[110px]">
+          <div className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Objectif prochain</div>
+          {nextGoal.target ? (
+            <>
+              <div className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+                Objectif {nextGoal.target}
+              </div>
+              <div className="text-[11px] text-gray-600 dark:text-gray-400">pour {nextGoal.label}</div>
+            </>
+          ) : (
+            <div className="text-sm font-semibold text-green-700 dark:text-green-300">Objectif atteint</div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className={`relative overflow-hidden rounded-xl border-2 p-6 mb-6 transition-all duration-500 ${eligibleInfo.bgColor} ${
-      isAnimating ? 'scale-105 shadow-2xl' : 'scale-100 shadow-lg'
-    }`}>
+    <div className={`relative overflow-hidden rounded-xl border-2 transition-all duration-500 ${containerSpacing} ${eligibleInfo.bgColor} ${animationClass}`}>
       {/* Animation de particules */}
-      {isAnimating && (
+      {showParticles && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           {[...Array(20)].map((_, i) => (
             <div
@@ -144,44 +197,44 @@ export default function ScoreEstimateBadge({ score, accuracy, durationMinutes, t
 
       <div className="relative z-10">
         {/* Badge avec emoji */}
-        <div className="flex items-center justify-center mb-4">
-          <div className={`text-6xl transform transition-all duration-500 ${
-            isAnimating ? 'scale-125 rotate-12' : 'scale-100 rotate-0'
+        <div className={`flex items-center justify-center ${badgeMargin}`}>
+          <div className={`${emojiSize} transform transition-all duration-500 ${
+            isAnimating && !isCompact ? emojiScale : 'scale-100 rotate-0'
           }`}>
             {badgeEmoji}
           </div>
         </div>
 
         {/* Score estimé avec animation */}
-        <div className="text-center mb-4">
-          <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+        <div className={`text-center ${badgeMargin}`}>
+          <div className={`${labelSize} text-gray-600 dark:text-gray-400 mb-2`}>
             Score estimé sur 400
           </div>
-          <div className={`text-6xl font-bold ${scoreColor} transition-all duration-300 ${
-            isAnimating ? 'scale-110' : 'scale-100'
+          <div className={`${scoreSize} font-bold ${scoreColor} transition-all duration-300 ${
+            isAnimating && !isCompact ? 'scale-110' : 'scale-100'
           }`}>
             {displayScore}
           </div>
-          <div className="text-2xl text-gray-500 dark:text-gray-400 mt-1">
+          <div className={`${denominatorSize} text-gray-500 dark:text-gray-400 mt-1`}>
             / 400
           </div>
         </div>
 
         {/* Statistiques */}
-        <div className="flex justify-center gap-4 mb-4 text-sm">
-          <div className="px-3 py-1 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+        <div className={`flex justify-center ${statGap} ${badgeMargin} ${statSize}`}>
+          <div className={`${statPadding} bg-white/50 dark:bg-gray-800/50 rounded-lg`}>
             <span className="text-gray-600 dark:text-gray-400">Précision: </span>
             <span className="font-semibold">{accuracy}%</span>
           </div>
-          <div className="px-3 py-1 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+          <div className={`${statPadding} bg-white/50 dark:bg-gray-800/50 rounded-lg`}>
             <span className="text-gray-600 dark:text-gray-400">Durée: </span>
             <span className="font-semibold">{durationMinutes} min</span>
           </div>
         </div>
 
         {/* Message d'éligibilité */}
-        <div className={`mt-4 p-4 rounded-lg border ${eligibleInfo.bgColor}`}>
-          <p className={`text-sm text-center ${eligibleInfo.style}`}>
+        <div className={`mt-4 ${messagePadding} rounded-lg border ${eligibleInfo.bgColor}`}>
+          <p className={`${statSize} ${messageClamp} text-center ${eligibleInfo.style}`}>
             {eligibleInfo.message}
           </p>
         </div>

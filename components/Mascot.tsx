@@ -25,41 +25,23 @@ const getAccessory = (rank: number): string => {
   return '' // Pas d'accessoire au-delà du rang 50
 }
 
-const getSuggestion = (statsByTag: Array<{ tagName: string; count: number }>): string => {
-  // Si pas de stats, message d'encouragement
-  if (!statsByTag || statsByTag.length === 0) {
-    return "Commence à réviser pour progresser ! 🚀"
-  }
+// Liste de 10 recommandations différentes
+const RECOMMENDATIONS = [
+  "C'est l'heure de faire un test blanc ! 📝",
+  "Continue à réviser pour améliorer ton score ! 💪",
+  "N'oublie pas de réviser tes questions en attente ! 📚",
+  "Entraîne-toi sur les questions que tu as manquées ! 🎯",
+  "Fais un test blitz pour tester tes connaissances ! ⚡",
+  "Révise régulièrement pour maintenir ton niveau ! 📖",
+  "Consulte tes statistiques pour voir ta progression ! 📊",
+  "Pense à varier les matières dans tes révisions ! 🌍",
+  "Continue comme ça, tu progresses bien ! 🚀",
+  "N'hésite pas à créer tes propres questions ! ✨",
+]
 
-  // Trouver les tags avec peu de questions révisées
-  const lowCountTags = statsByTag
-    .filter((stat) => stat.count < 5)
-    .sort((a, b) => a.count - b.count)
-
-  if (lowCountTags.length === 0) {
-    return "Continue comme ça ! Tu progresses bien ! 💪"
-  }
-
-  const tagName = lowCountTags[0].tagName.toLowerCase()
-
-  // Suggestions basées sur les tags
-  if (tagName.includes('actualité') || tagName.includes('actu')) {
-    return "Tu devrais réviser plus de géographie et d'histoire ! 📚"
-  }
-  if (tagName.includes('culture')) {
-    return "Pense à réviser la culture générale ! 🌍"
-  }
-  if (tagName.includes('français')) {
-    return "N'oublie pas de réviser le français ! 📖"
-  }
-  if (tagName.includes('logique')) {
-    return "Entraîne-toi plus sur la logique ! 🧩"
-  }
-  if (tagName.includes('anglais')) {
-    return "Révise plus d'anglais ! 🇬🇧"
-  }
-
-  return `Tu devrais réviser plus de ${lowCountTags[0].tagName} ! 📚`
+const getSuggestion = (statsByTag: Array<{ tagName: string; count: number }>, recommendationIndex: number): string => {
+  // Retourner une recommandation de la liste en fonction de l'index
+  return RECOMMENDATIONS[recommendationIndex % RECOMMENDATIONS.length]
 }
 
 export default function Mascot() {
@@ -67,6 +49,7 @@ export default function Mascot() {
   const [mascotData, setMascotData] = useState<MascotData | null>(null)
   const [showTooltip, setShowTooltip] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [recommendationIndex, setRecommendationIndex] = useState(0)
 
   useEffect(() => {
     if (session) {
@@ -108,12 +91,18 @@ export default function Mascot() {
     )
   }
 
+  const handleMascotClick = () => {
+    // Changer la recommandation à chaque clic
+    setRecommendationIndex((prev) => (prev + 1) % RECOMMENDATIONS.length)
+    setShowTooltip(!showTooltip)
+  }
+
   // Si pas de données après chargement, afficher quand même une mascotte par défaut
   if (!mascotData) {
     return (
       <div className="fixed bottom-4 right-4 z-50">
         <button
-          onClick={() => setShowTooltip(!showTooltip)}
+          onClick={handleMascotClick}
           className="relative w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-full shadow-xl border-4 border-blue-300 dark:border-blue-700 flex items-center justify-center text-5xl hover:scale-110 transition-transform cursor-pointer"
           aria-label="Mascotte"
         >
@@ -124,7 +113,7 @@ export default function Mascot() {
   }
 
   const accessory = getAccessory(mascotData.rank)
-  const suggestion = getSuggestion(mascotData.statsByTag)
+  const suggestion = getSuggestion(mascotData.statsByTag, recommendationIndex)
   const mascotEmoji = MASCOT_EMOJIS[mascotData.mascot] || '🦉'
 
   return (
@@ -150,7 +139,7 @@ export default function Mascot() {
 
         {/* Mascotte */}
         <button
-          onClick={() => setShowTooltip(!showTooltip)}
+          onClick={handleMascotClick}
           className="relative w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-full shadow-xl border-4 border-blue-300 dark:border-blue-700 flex items-center justify-center text-5xl hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer group"
           aria-label="Mascotte"
         >

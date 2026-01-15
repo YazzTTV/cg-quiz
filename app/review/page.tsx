@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Nav } from '@/components/Nav'
+import ScoreEstimateBadge from '@/components/ScoreEstimateBadge'
 
 type Choice = {
   id: string
@@ -35,6 +36,9 @@ export default function ReviewPage() {
   const [explanation, setExplanation] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [showReviewOptions, setShowReviewOptions] = useState(true)
+  const [isFlashcardSaved, setIsFlashcardSaved] = useState(false)
+  const [savingFlashcard, setSavingFlashcard] = useState(false)
+  const [estimatedScore, setEstimatedScore] = useState<{ score: number; accuracy: number } | null>(null)
   const [recentQuestionIds, setRecentQuestionIds] = useState<string[]>(() => {
     // Charger depuis localStorage au démarrage
     if (typeof window !== 'undefined') {
@@ -90,6 +94,7 @@ export default function ReviewPage() {
         setIsCorrect(null)
         setCorrectChoiceId(null)
         setExplanation(null)
+        setIsFlashcardSaved(false)
       } else {
         console.error('Aucune question disponible')
       }
@@ -99,6 +104,36 @@ export default function ReviewPage() {
       setLoading(false)
     }
   }, [session, recentQuestionIds])
+
+  // Charger le score estimé au démarrage
+  useEffect(() => {
+    if (session && status === 'authenticated') {
+      loadEstimatedScore()
+    }
+  }, [session, status])
+
+  const loadEstimatedScore = async () => {
+    try {
+      const res = await fetch('/api/dashboard/stats')
+      const data = await res.json()
+      if (res.ok && data) {
+        // Calculer le score estimé exactement comme dans le dashboard
+        const totalAttempts = data.totalAttempts || 0
+        const totalCorrect = data.totalCorrect || 0
+        const successRate = totalAttempts > 0
+          ? Math.min(100, Math.round((totalCorrect / totalAttempts) * 100))
+          : 0
+        const estimatedScoreValue = Math.round((successRate / 100) * 400)
+        
+        setEstimatedScore({
+          score: estimatedScoreValue,
+          accuracy: successRate,
+        })
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement du score estimé:', error)
+    }
+  }
 
   // Ne pas charger automatiquement la question - l'utilisateur doit cliquer sur "Spaced Review"
   // useEffect(() => {
@@ -132,11 +167,43 @@ export default function ReviewPage() {
         setExplanation(data.explanation)
         // Déclencher la mise à jour du win streak
         window.dispatchEvent(new Event('winStreakUpdated'))
+        // Mettre à jour le score estimé après avoir répondu
+        loadEstimatedScore()
       }
     } catch (error) {
       console.error('Erreur lors de la réponse:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSaveFlashcard = async () => {
+    if (!question) return
+
+    setSavingFlashcard(true)
+    try {
+      const res = await fetch('/api/flashcards/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId: question.id,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setIsFlashcardSaved(true)
+        // La fiche a été créée ou existait déjà - dans les deux cas, on la marque comme sauvegardée
+      } else {
+        console.error('Erreur lors de la sauvegarde:', data.error)
+        alert('Erreur lors de la sauvegarde de la fiche: ' + (data.error || 'Erreur inconnue'))
+      }
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde de la fiche:', error)
+      alert('Erreur lors de la sauvegarde de la fiche')
+    } finally {
+      setSavingFlashcard(false)
     }
   }
 
@@ -216,6 +283,17 @@ export default function ReviewPage() {
         {showReviewOptions && (
           <div className="space-y-6 mb-6">
             <h1 className="text-3xl font-bold mb-6">Révisées</h1>
+            {estimatedScore && (
+              <div className="mb-4">
+                <ScoreEstimateBadge
+                  score={estimatedScore.score}
+                  accuracy={estimatedScore.accuracy}
+                  durationMinutes={0}
+                  testType="blanc"
+                  size="compact"
+                />
+              </div>
+            )}
             
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
               <h2 className="text-xl font-semibold mb-4">📚 Révisions espacées</h2>
@@ -272,6 +350,7 @@ export default function ReviewPage() {
                 ← Retour aux options
               </button>
             </div>
+
             {loading && !question && (
               <div className="text-center py-16">Chargement de la question...</div>
             )}
@@ -333,6 +412,43 @@ export default function ReviewPage() {
                     </div>
                   )}
 
+                  {/* Bouton pour sauvegarder la fiche */}
+                  <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <strong className="block mb-1">💾 Enregistrer dans les fiches mémo</strong>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {isFlashcardSaved 
+                            ? 'Fiche enregistrée ! Consultez-la dans la section Fiches.'
+                            : 'Créez une fiche mémo pour réviser cette question plus tard'}
+                        </p>
+                        {isFlashcardSaved && (
+                          <a
+                            href="/fiches"
+                            className="inline-block mt-2 text-sm text-purple-600 dark:text-purple-400 hover:underline"
+                          >
+                            → Voir mes fiches
+                          </a>
+                        )}
+                      </div>
+                      <button
+                        onClick={handleSaveFlashcard}
+                        disabled={isFlashcardSaved || savingFlashcard}
+                        className={`px-4 py-2 rounded-lg font-medium transition-colors ml-4 ${
+                          isFlashcardSaved
+                            ? 'bg-green-500 text-white cursor-default'
+                            : 'bg-purple-600 text-white hover:bg-purple-700'
+                        } disabled:opacity-50`}
+                      >
+                        {savingFlashcard
+                          ? 'Enregistrement...'
+                          : isFlashcardSaved
+                          ? '✓ Enregistré'
+                          : 'Enregistrer'}
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                       Quand souhaitez-vous revoir cette question ?
@@ -391,4 +507,3 @@ export default function ReviewPage() {
     </div>
   )
 }
-

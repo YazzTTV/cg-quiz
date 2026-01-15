@@ -31,6 +31,7 @@ model User {
   createdQuestions     Question[]          @relation("QuestionCreator")
   userQuestionStates   UserQuestionState[]
   reportedQuestions    Report[]
+  flashcards          Flashcard[]
 
   @@map("users")
 }
@@ -53,6 +54,7 @@ model Question {
   userQuestionStates UserQuestionState[]
   tags              QuestionTag[]
   reports           Report[]
+  flashcards        Flashcard[]
 
   @@index([status])
   @@map("questions")
@@ -138,4 +140,22 @@ model Report {
 
   @@index([questionId])
   @@map("reports")
+}
+
+model Flashcard {
+  id          String    @id @default(uuid())
+  userId      String
+  questionId  String
+  aiContent   String?   // Contenu généré par IA pour la mémorisation
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+  @@index([userId])
+  @@index([questionId])
+  @@map("flashcards")
 }

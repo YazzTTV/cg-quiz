@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Nav } from '@/components/Nav'
+import { formatComprehensionText } from '@/lib/formatComprehensionText'
 import ScoreEstimateBadge from '@/components/ScoreEstimateBadge'
 
 type Choice = {
@@ -394,7 +395,43 @@ export default function TestBlitzPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Nav />
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
+        <div className="flex gap-6">
+          {/* Sommaire à gauche */}
+          <div className="w-56 flex-shrink-0 -ml-2">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 sticky top-4">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                Sommaire
+              </h3>
+              <div className="grid grid-cols-5 gap-1.5 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
+                {questions.map((question, index) => {
+                  const isAnswered = answers[question.id] !== undefined
+                  const isCurrent = index === currentQuestionIndex
+                  
+                  return (
+                    <button
+                      key={question.id}
+                      onClick={() => setCurrentQuestionIndex(index)}
+                      className={`
+                        w-8 h-8 rounded-lg text-xs font-medium transition-all
+                        ${isCurrent 
+                          ? 'bg-purple-600 text-white shadow-lg scale-110' 
+                          : isAnswered
+                          ? 'bg-blue-500 text-white hover:bg-blue-600'
+                          : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                        }
+                      `}
+                      title={`Question ${index + 1}`}
+                    >
+                      {index + 1}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+          
+          {/* Contenu principal */}
+          <div className="flex-1 max-w-4xl">
           {/* Header avec timer et progression */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
@@ -426,12 +463,24 @@ export default function TestBlitzPage() {
           {currentQuestion && (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
               {currentQuestion.comprehensionText && (
-                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Texte de compréhension :
-                  </h3>
-                  <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap leading-relaxed">
-                    {currentQuestion.comprehensionText}
+                <div className="mb-6 w-full relative">
+                  {/* Badge moderne */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-md">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                      </svg>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Texte de compréhension</span>
+                  </div>
+                  
+                  {/* Zone de texte moderne */}
+                  <div className="relative w-full bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-800 rounded-xl border-l-4 border-purple-500 shadow-sm">
+                    <div className="py-5 px-[10px] max-h-72 overflow-y-auto custom-scrollbar">
+                      <div className="w-full text-[15px] leading-relaxed text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words font-sans text-left">
+                        {formatComprehensionText(currentQuestion.comprehensionText)}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -498,6 +547,7 @@ export default function TestBlitzPage() {
                 </button>
               </div>
             </div>
+          </div>
           </div>
         </div>
       </div>

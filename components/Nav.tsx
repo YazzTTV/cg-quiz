@@ -19,6 +19,9 @@ export function Nav() {
                 <Link href="/review" className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
                   Réviser
                 </Link>
+                <Link href="/fiches" className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                  Fiches
+                </Link>
                 <Link href="/dashboard" className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
                   Dashboard
                 </Link>
