@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Nav } from '@/components/Nav'
 import { formatComprehensionText } from '@/lib/formatComprehensionText'
 import ScoreEstimateBadge from '@/components/ScoreEstimateBadge'
+import ReportQuestionModal from '@/components/ReportQuestionModal'
 
 type Choice = {
   id: string
@@ -51,6 +52,7 @@ export default function TestBlitzPage() {
   const [results, setResults] = useState<TestResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [showConfirmFinish, setShowConfirmFinish] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -484,6 +486,17 @@ export default function TestBlitzPage() {
                   </div>
                 </div>
               )}
+              
+              {/* Bouton pour signaler la question - visible dès l'affichage */}
+              <div className="mb-4 flex justify-end">
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium text-sm"
+                >
+                  🚨 Signaler la question
+                </button>
+              </div>
+
               <h2 className="text-xl font-semibold mb-4">{currentQuestion.prompt}</h2>
               <div className="space-y-3">
                 {currentQuestion.choices.map((choice) => (
@@ -550,6 +563,18 @@ export default function TestBlitzPage() {
           </div>
           </div>
         </div>
+
+        {/* Modal de signalement */}
+        {currentQuestion && (
+          <ReportQuestionModal
+            questionId={currentQuestion.id}
+            isOpen={showReportModal}
+            onClose={() => setShowReportModal(false)}
+            onReported={() => {
+              setShowReportModal(false)
+            }}
+          />
+        )}
       </div>
     </div>
   )

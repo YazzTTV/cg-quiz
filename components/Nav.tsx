@@ -2,9 +2,23 @@
 
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
+import { usePathname, useRouter } from 'next/navigation'
 
 export function Nav() {
   const { data: session } = useSession()
+  const pathname = usePathname()
+  const router = useRouter()
+
+  const handleReviewClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    // Si on est déjà sur /review, forcer la réinitialisation
+    if (pathname === '/review') {
+      e.preventDefault()
+      // Déclencher un événement personnalisé pour réinitialiser l'état
+      window.dispatchEvent(new CustomEvent('resetReviewPage'))
+      // Forcer un re-render en naviguant vers la même route
+      router.push('/review')
+    }
+  }
 
   return (
     <nav className="border-b border-gray-200 dark:border-gray-800">
@@ -16,7 +30,11 @@ export function Nav() {
             </Link>
             {session && (
               <>
-                <Link href="/review" className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                <Link 
+                  href="/review" 
+                  onClick={handleReviewClick}
+                  className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                >
                   Réviser
                 </Link>
                 <Link href="/fiches" className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">

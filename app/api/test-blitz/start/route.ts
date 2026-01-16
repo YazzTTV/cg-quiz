@@ -9,12 +9,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
 
+    const userId = session.user.id
     const body = await req.json()
     const duration = body.duration // '30' ou '60' en minutes
 
     if (!duration || (duration !== 30 && duration !== 60)) {
       return NextResponse.json({ error: 'Durée invalide. Doit être 30 ou 60 minutes' }, { status: 400 })
     }
+
+    // Récupérer les IDs des questions suspendues (signalées) par l'utilisateur
+    const suspendedQuestions = await prisma.userQuestionState.findMany({
+      where: {
+        userId,
+        suspended: true,
+      },
+      select: { questionId: true },
+    })
+    const suspendedQuestionIds = suspendedQuestions.map((s) => s.questionId)
 
     // Récupérer toutes les questions des deux tests blancs
     const testBlanc1Tag = await prisma.tag.findUnique({ where: { name: 'Test Blanc 1' } })
@@ -50,6 +61,7 @@ export async function POST(req: NextRequest) {
       test1Questions = await prisma.question.findMany({
         where: {
           status: 'APPROVED',
+          id: { notIn: suspendedQuestionIds },
           tags: {
             some: {
               tagId: testBlanc1Tag.id,
@@ -71,6 +83,7 @@ export async function POST(req: NextRequest) {
       test2Questions = await prisma.question.findMany({
         where: {
           status: 'APPROVED',
+          id: { notIn: suspendedQuestionIds },
           tags: {
             some: {
               tagId: testBlanc2Tag.id,

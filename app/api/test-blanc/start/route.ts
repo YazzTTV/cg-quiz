@@ -13,6 +13,16 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const testNumber = body.testNumber || 1 // Par défaut Test Blanc 1
 
+    // Récupérer les IDs des questions suspendues (signalées) par l'utilisateur
+    const suspendedQuestions = await prisma.userQuestionState.findMany({
+      where: {
+        userId,
+        suspended: true,
+      },
+      select: { questionId: true },
+    })
+    const suspendedQuestionIds = suspendedQuestions.map((s) => s.questionId)
+
     // Récupérer toutes les questions du test blanc spécifié
     const tagName = `Test Blanc ${testNumber}`
     const testBlancTag = await prisma.tag.findUnique({ where: { name: tagName } })
@@ -23,6 +33,7 @@ export async function POST(req: NextRequest) {
     const questions = await prisma.question.findMany({
       where: {
         status: 'APPROVED',
+        id: { notIn: suspendedQuestionIds },
         tags: {
           some: {
             tagId: testBlancTag.id,

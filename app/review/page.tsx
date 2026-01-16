@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Nav } from '@/components/Nav'
 import ScoreEstimateBadge from '@/components/ScoreEstimateBadge'
+import ReportQuestionModal from '@/components/ReportQuestionModal'
 
 type Choice = {
   id: string
@@ -27,6 +28,7 @@ type UserState = {
 export default function ReviewPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const pathname = usePathname()
   const [question, setQuestion] = useState<Question | null>(null)
   const [userState, setUserState] = useState<UserState | null>(null)
   const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null)
@@ -39,6 +41,14 @@ export default function ReviewPage() {
   const [isFlashcardSaved, setIsFlashcardSaved] = useState(false)
   const [savingFlashcard, setSavingFlashcard] = useState(false)
   const [estimatedScore, setEstimatedScore] = useState<{ score: number; accuracy: number } | null>(null)
+  const [showReportModal, setShowReportModal] = useState(false)
+  // Mode survie
+  const [mode, setMode] = useState<'srs' | 'survival' | null>(null)
+  const [hearts, setHearts] = useState(3)
+  const [survivalScore, setSurvivalScore] = useState(0)
+  const [gameOver, setGameOver] = useState(false)
+  const [showHeartBreakAnimation, setShowHeartBreakAnimation] = useState(false)
+  const [lostHearts, setLostHearts] = useState<number[]>([]) // Liste des indices de cœurs perdus (0, 1, ou 2)
   const [recentQuestionIds, setRecentQuestionIds] = useState<string[]>(() => {
     // Charger depuis localStorage au démarrage
     if (typeof window !== 'undefined') {
@@ -77,6 +87,42 @@ export default function ReviewPage() {
     }
   }, [status, router])
 
+  // Fonction pour réinitialiser l'état et afficher la page de sélection des modes
+  const resetToReviewOptions = useCallback(() => {
+    setShowReviewOptions(true)
+    setQuestion(null)
+    setMode(null)
+    setHearts(3)
+    setSurvivalScore(0)
+    setGameOver(false)
+    setIsAnswered(false)
+    setSelectedChoiceId(null)
+    setIsCorrect(null)
+    setCorrectChoiceId(null)
+    setExplanation(null)
+    setIsFlashcardSaved(false)
+    setShowReportModal(false)
+  }, [])
+
+  // Réinitialiser l'état quand on arrive sur la page /review
+  useEffect(() => {
+    if (pathname === '/review') {
+      resetToReviewOptions()
+    }
+  }, [pathname, resetToReviewOptions])
+
+  // Écouter l'événement personnalisé déclenché par le clic sur "Réviser" dans la nav
+  useEffect(() => {
+    const handleResetReview = () => {
+      resetToReviewOptions()
+    }
+
+    window.addEventListener('resetReviewPage', handleResetReview)
+    return () => {
+      window.removeEventListener('resetReviewPage', handleResetReview)
+    }
+  }, [resetToReviewOptions])
+
   const loadNextQuestion = useCallback(async () => {
     if (!session) return
 
@@ -104,6 +150,34 @@ export default function ReviewPage() {
       setLoading(false)
     }
   }, [session, recentQuestionIds])
+
+  const loadNextSurvivalQuestion = useCallback(async () => {
+    if (!session || gameOver) return
+
+    setLoading(true)
+    try {
+      const excludeParam = recentQuestionIds.length > 0 ? `?exclude=${recentQuestionIds.join(',')}` : ''
+      const res = await fetch(`/api/review/survival/next${excludeParam}`)
+      const data = await res.json()
+
+      if (res.ok && data.question) {
+        setQuestion(data.question)
+        setUserState(data.userState)
+        setSelectedChoiceId(null)
+        setIsAnswered(false)
+        setIsCorrect(null)
+        setCorrectChoiceId(null)
+        setExplanation(null)
+        setIsFlashcardSaved(false)
+      } else {
+        console.error('Aucune question disponible')
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement de la question:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [session, recentQuestionIds, gameOver])
 
   // Charger le score estimé au démarrage
   useEffect(() => {
@@ -165,10 +239,34 @@ export default function ReviewPage() {
         setIsCorrect(data.isCorrect)
         setCorrectChoiceId(data.correctChoiceId)
         setExplanation(data.explanation)
-        // Déclencher la mise à jour du win streak
-        window.dispatchEvent(new Event('winStreakUpdated'))
-        // Mettre à jour le score estimé après avoir répondu
-        loadEstimatedScore()
+        
+        // Gestion du mode survie
+        if (mode === 'survival') {
+          if (data.isCorrect) {
+            setSurvivalScore((prev) => prev + 1)
+          } else {
+            const newHearts = hearts - 1
+            // Déclencher l'animation du cœur qui se coupe
+            setShowHeartBreakAnimation(true)
+            // Calculer l'index du cœur perdu (de droite à gauche : 2, 1, 0)
+            const lostHeartIndex = 3 - newHearts - 1
+            setLostHearts((prev) => [...prev, lostHeartIndex])
+            setHearts(newHearts)
+            // Arrêter l'animation après 1 seconde
+            setTimeout(() => {
+              setShowHeartBreakAnimation(false)
+            }, 1000)
+            if (newHearts <= 0) {
+              setGameOver(true)
+            }
+          }
+        } else {
+          // Mode SRS normal
+          // Déclencher la mise à jour du win streak
+          window.dispatchEvent(new Event('winStreakUpdated'))
+          // Mettre à jour le score estimé après avoir répondu
+          loadEstimatedScore()
+        }
       }
     } catch (error) {
       console.error('Erreur lors de la réponse:', error)
@@ -238,10 +336,47 @@ export default function ReviewPage() {
     }
   }
 
+  const handleNextSurvivalQuestion = () => {
+    if (gameOver) return
+    
+    // Ajouter à la liste des questions récentes (max 20)
+    if (question) {
+      setRecentQuestionIds((prev) => {
+        const filtered = prev.filter((id) => id !== question.id)
+        const updated = [question.id, ...filtered].slice(0, 20)
+        return updated
+      })
+    }
+    loadNextSurvivalQuestion()
+  }
+
+  const startSurvivalMode = () => {
+    setMode('survival')
+    setHearts(3)
+    setSurvivalScore(0)
+    setGameOver(false)
+    setLostHearts([])
+    setShowHeartBreakAnimation(false)
+    setShowReviewOptions(false)
+    loadNextSurvivalQuestion()
+  }
+
+  const resetSurvivalMode = () => {
+    setMode(null)
+    setHearts(3)
+    setSurvivalScore(0)
+    setGameOver(false)
+    setLostHearts([])
+    setShowHeartBreakAnimation(false)
+    setQuestion(null)
+    setShowReviewOptions(true)
+  }
+
+
   // Navigation clavier
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      if (loading) return
+      if (loading || gameOver) return
 
       if (!isAnswered && question) {
         // 1-4 pour répondre
@@ -252,17 +387,25 @@ export default function ReviewPage() {
           }
         }
       } else if (isAnswered) {
-        // A/H/G/E pour scheduler
-        if (e.key === 'a' || e.key === 'A') handleSchedule('AGAIN')
-        if (e.key === 'h' || e.key === 'H') handleSchedule('HARD')
-        if (e.key === 'g' || e.key === 'G') handleSchedule('GOOD')
-        if (e.key === 'e' || e.key === 'E') handleSchedule('EASY')
+        if (mode === 'survival') {
+          // Mode survie : Espace ou Entrée pour continuer
+          if (e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault()
+            handleNextSurvivalQuestion()
+          }
+        } else {
+          // Mode SRS : A/H/G/E pour scheduler
+          if (e.key === 'a' || e.key === 'A') handleSchedule('AGAIN')
+          if (e.key === 'h' || e.key === 'H') handleSchedule('HARD')
+          if (e.key === 'g' || e.key === 'G') handleSchedule('GOOD')
+          if (e.key === 'e' || e.key === 'E') handleSchedule('EASY')
+        }
       }
     }
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [isAnswered, question, loading])
+  }, [isAnswered, question, loading, mode, gameOver, handleNextSurvivalQuestion, handleSchedule, handleAnswer])
 
   if (status === 'loading' || !session) {
     return (
@@ -302,6 +445,7 @@ export default function ReviewPage() {
               </p>
               <button
                 onClick={() => {
+                  setMode('srs')
                   setShowReviewOptions(false)
                   loadNextQuestion()
                 }}
@@ -337,30 +481,143 @@ export default function ReviewPage() {
                 Commencer un test blitz
               </a>
             </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+              <h2 className="text-xl font-semibold mb-4">❤️ Mode Survie</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Questions en boucle sans système SRS. Vous commencez avec 3 cœurs et perdez une vie à chaque erreur. 
+                Le but est d'aller le plus loin possible avant de perdre toutes vos vies !
+              </p>
+              <button
+                onClick={startSurvivalMode}
+                className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Commencer le mode survie
+              </button>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+              <h2 className="text-xl font-semibold mb-4">⚔️ Mode Duo</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Affrontez un ami dans un test similaire au test blitz ! Chaque question a un temps limité adaptatif selon sa difficulté.
+                Le joueur avec le meilleur score gagne !
+              </p>
+              <button
+                onClick={() => router.push('/duo')}
+                className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+              >
+                Commencer le mode duo
+              </button>
+            </div>
           </div>
         )}
 
         {!showReviewOptions && (
           <>
-            <div className="mb-4">
+            <div className="mb-4 flex items-center justify-between">
               <button
-                onClick={() => setShowReviewOptions(true)}
+                onClick={() => {
+                  if (mode === 'survival') {
+                    resetSurvivalMode()
+                  } else {
+                    setShowReviewOptions(true)
+                    setMode('srs')
+                  }
+                }}
                 className="px-4 py-2 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
               >
                 ← Retour aux options
               </button>
+              
+              {/* Affichage du mode survie */}
+              {mode === 'survival' && (
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold">Score: {survivalScore}</span>
+                  </div>
+                  <div className="flex items-center gap-1 relative">
+                    {[0, 1, 2].map((index) => {
+                      const isLost = lostHearts.includes(index)
+                      const isActive = index < hearts
+                      return (
+                        <span
+                          key={index}
+                          className={`text-2xl transition-all duration-500 ${
+                            isActive && !isLost
+                              ? 'text-red-500'
+                              : isLost
+                              ? 'text-gray-400 dark:text-gray-600 grayscale'
+                              : 'text-gray-300 dark:text-gray-600'
+                          }`}
+                        >
+                          ❤️
+                        </span>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+              
+              {/* Animation du cœur qui se coupe - affichée au centre de l'écran */}
+              {showHeartBreakAnimation && mode === 'survival' && (
+                <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-50">
+                  <div className="text-6xl animate-heart-break">
+                    ❤️
+                  </div>
+                </div>
+              )}
             </div>
 
             {loading && !question && (
               <div className="text-center py-16">Chargement de la question...</div>
             )}
 
-            {question && (
+            {/* Écran de fin de partie mode survie */}
+            {gameOver && mode === 'survival' && (
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
+                <h2 className="text-3xl font-bold mb-4 text-red-600 dark:text-red-400">💔 Partie terminée !</h2>
+                <p className="text-xl mb-6">Vous avez perdu toutes vos vies.</p>
+                <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-6 mb-6">
+                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    Score final: {survivalScore} question{survivalScore > 1 ? 's' : ''}
+                  </p>
+                </div>
+                <div className="flex gap-4 justify-center">
+                  <button
+                    onClick={startSurvivalMode}
+                    className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  >
+                    Rejouer
+                  </button>
+                  <button
+                    onClick={resetSurvivalMode}
+                    className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                  >
+                    Retour aux options
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {question && !gameOver && (
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-              <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-                Vu {userState?.timesSeen || 0} fois • Correct {userState?.timesCorrect || 0} fois
+              {mode !== 'survival' && (
+                <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+                  Vu {userState?.timesSeen || 0} fois • Correct {userState?.timesCorrect || 0} fois
+                </div>
+              )}
+              
+              {/* Bouton pour signaler la question - visible dès l'affichage */}
+              <div className="mb-4 flex justify-end">
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium text-sm"
+                >
+                  🚨 Signaler la question
+                </button>
               </div>
+
               <h2 className="text-2xl font-bold mb-6">{question.prompt}</h2>
 
               <div className="space-y-3">
@@ -412,6 +669,22 @@ export default function ReviewPage() {
                     </div>
                   )}
 
+                  {/* Mode survie : bouton pour continuer */}
+                  {mode === 'survival' && (
+                    <div className="pt-4">
+                      <button
+                        onClick={handleNextSurvivalQuestion}
+                        disabled={loading || gameOver}
+                        className="w-full px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {gameOver ? 'Partie terminée' : 'Question suivante'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Mode SRS : bouton pour sauvegarder la fiche et scheduler */}
+                  {mode !== 'survival' && (
+                    <>
                   {/* Bouton pour sauvegarder la fiche */}
                   <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
                     <div className="flex items-center justify-between">
@@ -449,41 +722,53 @@ export default function ReviewPage() {
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                      Quand souhaitez-vous revoir cette question ?
-                    </p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => handleSchedule('AGAIN')}
-                        disabled={loading}
-                        className="px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-                      >
-                        À revoir ({'<3m'}) <span className="text-xs">[A]</span>
-                      </button>
-                      <button
-                        onClick={() => handleSchedule('HARD')}
-                        disabled={loading}
-                        className="px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
-                      >
-                        Difficile ({'<15m'}) <span className="text-xs">[H]</span>
-                      </button>
-                      <button
-                        onClick={() => handleSchedule('GOOD')}
-                        disabled={loading}
-                        className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                      >
-                        Correct (1j) <span className="text-xs">[G]</span>
-                      </button>
-                      <button
-                        onClick={() => handleSchedule('EASY')}
-                        disabled={loading}
-                        className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                      >
-                        Facile (3j) <span className="text-xs">[E]</span>
-                      </button>
-                    </div>
+                  {/* Bouton pour signaler la question */}
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                    <button
+                      onClick={() => setShowReportModal(true)}
+                      className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
+                    >
+                      🚨 Signaler la question
+                    </button>
                   </div>
+
+                      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                          Quand souhaitez-vous revoir cette question ?
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            onClick={() => handleSchedule('AGAIN')}
+                            disabled={loading}
+                            className="px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                          >
+                            À revoir ({'<3m'}) <span className="text-xs">[A]</span>
+                          </button>
+                          <button
+                            onClick={() => handleSchedule('HARD')}
+                            disabled={loading}
+                            className="px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+                          >
+                            Difficile ({'<15m'}) <span className="text-xs">[H]</span>
+                          </button>
+                          <button
+                            onClick={() => handleSchedule('GOOD')}
+                            disabled={loading}
+                            className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            Correct (1j) <span className="text-xs">[G]</span>
+                          </button>
+                          <button
+                            onClick={() => handleSchedule('EASY')}
+                            disabled={loading}
+                            className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                          >
+                            Facile (3j) <span className="text-xs">[E]</span>
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -502,6 +787,24 @@ export default function ReviewPage() {
               </div>
             )}
           </>
+        )}
+
+        {/* Modal de signalement */}
+        {question && (
+          <ReportQuestionModal
+            questionId={question.id}
+            isOpen={showReportModal}
+            onClose={() => {
+              setShowReportModal(false)
+            }}
+            onReported={() => {
+              if (mode === 'survival') {
+                handleNextSurvivalQuestion()
+              } else {
+                handleSchedule('AGAIN')
+              }
+            }}
+          />
         )}
       </main>
     </div>

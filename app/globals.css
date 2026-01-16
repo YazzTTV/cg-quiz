@@ -98,3 +98,25 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #3b82f6 transparent;
 }
+
+/* Animation du cœur qui se coupe */
+@keyframes heartBreak {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5) rotate(180deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0.3) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.animate-heart-break {
+  animation: heartBreak 1s ease-out forwards;
+  color: #ef4444;
+  filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.5));
+}

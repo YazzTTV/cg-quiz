@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Nav } from '@/components/Nav'
 import ScoreEstimateBadge from '@/components/ScoreEstimateBadge'
 import { formatComprehensionText } from '@/lib/formatComprehensionText'
+import ReportQuestionModal from '@/components/ReportQuestionModal'
 
 type Choice = {
   id: string
@@ -51,6 +52,7 @@ export default function TestBlancPage() {
   const [showConfirmFinish, setShowConfirmFinish] = useState(false)
   const [selectedTest, setSelectedTest] = useState<number | null>(null)
   const [availableTests, setAvailableTests] = useState<number[]>([])
+  const [showReportModal, setShowReportModal] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -502,6 +504,17 @@ export default function TestBlancPage() {
                   </div>
                 </div>
               )}
+              
+              {/* Bouton pour signaler la question - visible dès l'affichage */}
+              <div className="mb-4 flex justify-end">
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium text-sm"
+                >
+                  🚨 Signaler la question
+                </button>
+              </div>
+
               <h2 className="text-xl font-semibold mb-4">{currentQuestion.prompt}</h2>
               <div className="space-y-3">
                 {currentQuestion.choices.map((choice) => (
@@ -568,6 +581,18 @@ export default function TestBlancPage() {
           </div>
           </div>
         </div>
+
+        {/* Modal de signalement */}
+        {currentQuestion && (
+          <ReportQuestionModal
+            questionId={currentQuestion.id}
+            isOpen={showReportModal}
+            onClose={() => setShowReportModal(false)}
+            onReported={() => {
+              setShowReportModal(false)
+            }}
+          />
+        )}
       </div>
     </div>
   )
