@@ -53,6 +53,7 @@ export default function TestBlancPage() {
   const [selectedTest, setSelectedTest] = useState<number | null>(null)
   const [availableTests, setAvailableTests] = useState<number[]>([])
   const [showReportModal, setShowReportModal] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -95,6 +96,7 @@ export default function TestBlancPage() {
             setStartTime(savedStartTime)
             setTimeRemaining(remaining)
             setIsTestStarted(true)
+            setIsPaused(parsed.isPaused || false)
           } else {
             // Le test a expiré ou n'est plus valide
             localStorage.removeItem('testBlancState')
@@ -108,7 +110,7 @@ export default function TestBlancPage() {
 
   // Timer
   useEffect(() => {
-    if (!isTestStarted || isTestFinished || timeRemaining <= 0) return
+    if (!isTestStarted || isTestFinished || timeRemaining <= 0 || isPaused) return
 
     const interval = setInterval(() => {
       setTimeRemaining((prev) => {
@@ -121,7 +123,7 @@ export default function TestBlancPage() {
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [isTestStarted, isTestFinished, timeRemaining])
+  }, [isTestStarted, isTestFinished, timeRemaining, isPaused])
 
   // Sauvegarder l'état dans localStorage
   useEffect(() => {
@@ -131,10 +133,11 @@ export default function TestBlancPage() {
         answers,
         currentQuestionIndex,
         startTime: startTime.toISOString(),
+        isPaused,
       }
       localStorage.setItem('testBlancState', JSON.stringify(state))
     }
-  }, [questions, answers, currentQuestionIndex, startTime, isTestStarted])
+  }, [questions, answers, currentQuestionIndex, startTime, isTestStarted, isPaused])
 
   const startTest = async () => {
     if (!selectedTest) {
@@ -171,7 +174,7 @@ export default function TestBlancPage() {
   }
 
   const handleAnswer = (choiceId: string) => {
-    if (isTestFinished) return
+    if (isTestFinished || isPaused) return
     const currentQuestion = questions[currentQuestionIndex]
     if (!currentQuestion) return
 
@@ -182,12 +185,14 @@ export default function TestBlancPage() {
   }
 
   const handleNext = () => {
+    if (isPaused) return
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex((prev) => prev + 1)
     }
   }
 
   const handlePrevious = () => {
+    if (isPaused) return
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex((prev) => prev - 1)
     }
@@ -430,9 +435,11 @@ export default function TestBlancPage() {
                   return (
                     <button
                       key={question.id}
-                      onClick={() => setCurrentQuestionIndex(index)}
+                      onClick={() => !isPaused && setCurrentQuestionIndex(index)}
+                      disabled={isPaused}
                       className={`
                         w-8 h-8 rounded-lg text-xs font-medium transition-all
+                        ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}
                         ${isCurrent 
                           ? 'bg-blue-600 text-white shadow-lg scale-110' 
                           : isAnswered
@@ -440,7 +447,7 @@ export default function TestBlancPage() {
                           : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                         }
                       `}
-                      title={`Question ${index + 1}`}
+                      title={isPaused ? 'Test en pause' : `Question ${index + 1}`}
                     >
                       {index + 1}
                     </button>
@@ -456,11 +463,25 @@ export default function TestBlancPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold">Test Blanc IAE</h1>
-              <div className="text-right">
-                <div className={`text-2xl font-mono font-bold ${timeRemaining < 600 ? 'text-red-600' : 'text-gray-700 dark:text-gray-300'}`}>
-                  {formatTime(timeRemaining)}
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setIsPaused(!isPaused)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    isPaused
+                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                      : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                  }`}
+                >
+                  {isPaused ? '▶ Reprendre' : '⏸ Pause'}
+                </button>
+                <div className="text-right">
+                  <div className={`text-2xl font-mono font-bold ${timeRemaining < 600 ? 'text-red-600' : 'text-gray-700 dark:text-gray-300'} ${isPaused ? 'opacity-50' : ''}`}>
+                    {formatTime(timeRemaining)}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    {isPaused ? '⏸ En pause' : 'Temps restant'}
+                  </div>
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Temps restant</div>
               </div>
             </div>
             <div className="mb-2">
@@ -521,7 +542,10 @@ export default function TestBlancPage() {
                   <button
                     key={choice.id}
                     onClick={() => handleAnswer(choice.id)}
+                    disabled={isPaused}
                     className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${
+                      isPaused ? 'opacity-50 cursor-not-allowed' : ''
+                    } ${
                       currentAnswer === choice.id
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                         : 'border-gray-300 dark:border-gray-600 hover:border-blue-300'
@@ -539,7 +563,7 @@ export default function TestBlancPage() {
             <div className="flex justify-between">
               <button
                 onClick={handlePrevious}
-                disabled={currentQuestionIndex === 0}
+                disabled={currentQuestionIndex === 0 || isPaused}
                 className="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Précédent
@@ -569,13 +593,13 @@ export default function TestBlancPage() {
                     </button>
                   </div>
                 )}
-                <button
-                  onClick={handleNext}
-                  disabled={currentQuestionIndex === questions.length - 1}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Suivant
-                </button>
+                  <button
+                    onClick={handleNext}
+                    disabled={currentQuestionIndex === questions.length - 1 || isPaused}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Suivant
+                  </button>
               </div>
             </div>
           </div>

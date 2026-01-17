@@ -10,6 +10,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx scripts/seed.ts",
+    "db:seed-challenges": "tsx scripts/seed-daily-challenges.ts",
     "db:import-html": "tsx scripts/import-html-questions.ts",
     "db:fix-format": "tsx scripts/fix-questions-format.ts",
     "db:fix-bad-answers": "tsx scripts/fix-bad-answers.ts",

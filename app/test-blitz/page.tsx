@@ -53,6 +53,7 @@ export default function TestBlitzPage() {
   const [loading, setLoading] = useState(false)
   const [showConfirmFinish, setShowConfirmFinish] = useState(false)
   const [showReportModal, setShowReportModal] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -81,6 +82,7 @@ export default function TestBlitzPage() {
             setTimeRemaining(remaining)
             setDuration(parsed.duration === 30 * 60 ? 30 : 60)
             setIsTestStarted(true)
+            setIsPaused(parsed.isPaused || false)
           } else {
             localStorage.removeItem('testBlitzState')
           }
@@ -142,7 +144,7 @@ export default function TestBlitzPage() {
 
   // Timer
   useEffect(() => {
-    if (!isTestStarted || isTestFinished || timeRemaining <= 0) return
+    if (!isTestStarted || isTestFinished || timeRemaining <= 0 || isPaused) return
 
     const interval = setInterval(() => {
       setTimeRemaining((prev) => {
@@ -156,7 +158,7 @@ export default function TestBlitzPage() {
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [isTestStarted, isTestFinished, timeRemaining, handleFinishTest])
+  }, [isTestStarted, isTestFinished, timeRemaining, isPaused, handleFinishTest])
 
   // Sauvegarder l'état dans localStorage
   useEffect(() => {
@@ -167,10 +169,11 @@ export default function TestBlitzPage() {
         currentQuestionIndex,
         startTime: startTime.toISOString(),
         duration: duration * 60,
+        isPaused,
       }
       localStorage.setItem('testBlitzState', JSON.stringify(state))
     }
-  }, [questions, answers, currentQuestionIndex, startTime, isTestStarted, duration])
+  }, [questions, answers, currentQuestionIndex, startTime, isTestStarted, duration, isPaused])
 
   const startTest = async (selectedDuration: 30 | 60) => {
     setLoading(true)
@@ -203,7 +206,7 @@ export default function TestBlitzPage() {
   }
 
   const handleAnswer = (choiceId: string) => {
-    if (isTestFinished) return
+    if (isTestFinished || isPaused) return
     const currentQuestion = questions[currentQuestionIndex]
     if (!currentQuestion) return
 
@@ -214,12 +217,14 @@ export default function TestBlitzPage() {
   }
 
   const handleNext = () => {
+    if (isPaused) return
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex((prev) => prev + 1)
     }
   }
 
   const handlePrevious = () => {
+    if (isPaused) return
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex((prev) => prev - 1)
     }
@@ -412,9 +417,11 @@ export default function TestBlitzPage() {
                   return (
                     <button
                       key={question.id}
-                      onClick={() => setCurrentQuestionIndex(index)}
+                      onClick={() => !isPaused && setCurrentQuestionIndex(index)}
+                      disabled={isPaused}
                       className={`
                         w-8 h-8 rounded-lg text-xs font-medium transition-all
+                        ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}
                         ${isCurrent 
                           ? 'bg-purple-600 text-white shadow-lg scale-110' 
                           : isAnswered
@@ -422,7 +429,7 @@ export default function TestBlitzPage() {
                           : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                         }
                       `}
-                      title={`Question ${index + 1}`}
+                      title={isPaused ? 'Test en pause' : `Question ${index + 1}`}
                     >
                       {index + 1}
                     </button>
@@ -438,11 +445,25 @@ export default function TestBlitzPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold">⚡ Test Blitz IAE</h1>
-              <div className="text-right">
-                <div className={`text-2xl font-mono font-bold ${timeRemaining < 300 ? 'text-red-600' : 'text-gray-700 dark:text-gray-300'}`}>
-                  {formatTime(timeRemaining)}
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setIsPaused(!isPaused)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    isPaused
+                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                      : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                  }`}
+                >
+                  {isPaused ? '▶ Reprendre' : '⏸ Pause'}
+                </button>
+                <div className="text-right">
+                  <div className={`text-2xl font-mono font-bold ${timeRemaining < 300 ? 'text-red-600' : 'text-gray-700 dark:text-gray-300'} ${isPaused ? 'opacity-50' : ''}`}>
+                    {formatTime(timeRemaining)}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    {isPaused ? '⏸ En pause' : 'Temps restant'}
+                  </div>
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Temps restant</div>
               </div>
             </div>
             <div className="mb-2">
@@ -503,7 +524,10 @@ export default function TestBlitzPage() {
                   <button
                     key={choice.id}
                     onClick={() => handleAnswer(choice.id)}
+                    disabled={isPaused}
                     className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${
+                      isPaused ? 'opacity-50 cursor-not-allowed' : ''
+                    } ${
                       currentAnswer === choice.id
                         ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
                         : 'border-gray-300 dark:border-gray-600 hover:border-purple-300'
@@ -521,7 +545,7 @@ export default function TestBlitzPage() {
             <div className="flex justify-between">
               <button
                 onClick={handlePrevious}
-                disabled={currentQuestionIndex === 0}
+                disabled={currentQuestionIndex === 0 || isPaused}
                 className="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Précédent
@@ -551,13 +575,13 @@ export default function TestBlitzPage() {
                     </button>
                   </div>
                 )}
-                <button
-                  onClick={handleNext}
-                  disabled={currentQuestionIndex === questions.length - 1}
-                  className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Suivant
-                </button>
+                  <button
+                    onClick={handleNext}
+                    disabled={currentQuestionIndex === questions.length - 1 || isPaused}
+                    className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Suivant
+                  </button>
               </div>
             </div>
           </div>

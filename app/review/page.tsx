@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { Nav } from '@/components/Nav'
 import ScoreEstimateBadge from '@/components/ScoreEstimateBadge'
 import ReportQuestionModal from '@/components/ReportQuestionModal'
+import DailyChallenge from '@/components/DailyChallenge'
 
 type Choice = {
   id: string
@@ -294,12 +295,14 @@ export default function ReviewPage() {
         setIsFlashcardSaved(true)
         // La fiche a été créée ou existait déjà - dans les deux cas, on la marque comme sauvegardée
       } else {
-        console.error('Erreur lors de la sauvegarde:', data.error)
-        alert('Erreur lors de la sauvegarde de la fiche: ' + (data.error || 'Erreur inconnue'))
+        console.error('Erreur lors de la sauvegarde:', data)
+        const errorMessage = data.details || data.error || 'Erreur inconnue'
+        alert('Erreur lors de la sauvegarde de la fiche: ' + errorMessage)
       }
     } catch (error) {
       console.error('Erreur lors de la sauvegarde de la fiche:', error)
-      alert('Erreur lors de la sauvegarde de la fiche')
+      const errorMessage = error instanceof Error ? error.message : 'Erreur réseau'
+      alert('Erreur lors de la sauvegarde de la fiche: ' + errorMessage)
     } finally {
       setSavingFlashcard(false)
     }
@@ -411,9 +414,14 @@ export default function ReviewPage() {
     return (
       <div className="min-h-screen">
         <Nav />
-        <main className="max-w-2xl mx-auto px-4 py-16">
-          <div className="text-center">Chargement...</div>
-        </main>
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex gap-6">
+            <DailyChallenge />
+            <main className="flex-1 max-w-2xl">
+              <div className="text-center">Chargement...</div>
+            </main>
+          </div>
+        </div>
       </div>
     )
   }
@@ -421,7 +429,13 @@ export default function ReviewPage() {
   return (
     <div className="min-h-screen">
       <Nav />
-      <main className="max-w-2xl mx-auto px-4 py-16">
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex gap-6">
+          {/* Défi du jour sur le côté gauche */}
+          <DailyChallenge />
+          
+          {/* Contenu principal */}
+          <main className="flex-1 max-w-2xl">
         {/* Section Révisées - Affichée seulement si showReviewOptions est true */}
         {showReviewOptions && (
           <div className="space-y-6 mb-6">
@@ -806,7 +820,9 @@ export default function ReviewPage() {
             }}
           />
         )}
-      </main>
+          </main>
+        </div>
+      </div>
     </div>
   )
 }

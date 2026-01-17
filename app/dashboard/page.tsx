@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Nav } from '@/components/Nav'
+import DailyChallenge from '@/components/DailyChallenge'
 
 type Stats = {
   dueNow: number
@@ -252,7 +253,13 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Nav />
-      <main className="max-w-4xl mx-auto px-4 py-16">
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex gap-6">
+          {/* Défi du jour sur le côté gauche */}
+          <DailyChallenge />
+          
+          {/* Contenu principal */}
+          <main className="flex-1 max-w-4xl">
         <h1 className="text-4xl font-bold mb-8 text-gray-800 dark:text-gray-200">Dashboard</h1>
 
         {loading ? (
@@ -270,13 +277,13 @@ export default function DashboardPage() {
                       <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Maintenant</span>
                         <span className="font-bold text-xl text-red-600 dark:text-red-400">{stats.dueNow}</span>
-                      </div>
+                  </div>
                       <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Aujourd'hui</span>
                         <span className="font-bold text-xl text-gray-800 dark:text-gray-200">{stats.dueToday}</span>
-                      </div>
-                    </div>
                   </div>
+                </div>
+              </div>
 
                   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-5 hover:shadow-lg transition-shadow">
                     <h2 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-200">Progression</h2>
@@ -284,21 +291,21 @@ export default function DashboardPage() {
                       <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Vues</span>
                         <span className="font-bold text-xl text-gray-800 dark:text-gray-200">{stats.totalSeen}</span>
-                      </div>
+                  </div>
                       <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg mb-3">
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Disponibles</span>
                         <span className="font-bold text-xl text-gray-800 dark:text-gray-200">{stats.totalAvailable}</span>
-                      </div>
+                  </div>
                       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 shadow-inner">
-                        <div
+                      <div
                           className="bg-blue-500 dark:bg-blue-400 h-3 rounded-full transition-all shadow-sm"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                      <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1 text-center">
-                        {progress}% complété
-                      </p>
+                        style={{ width: `${progress}%` }}
+                      />
                     </div>
+                      <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1 text-center">
+                      {progress}% complété
+                    </p>
+                  </div>
                   </div>
 
                   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-5 hover:shadow-lg transition-shadow">
@@ -306,7 +313,7 @@ export default function DashboardPage() {
                     <div className="space-y-3">
                       {(() => {
                         const successRate = stats.totalAttempts > 0
-                          ? Math.min(100, Math.round((stats.totalCorrect / stats.totalAttempts) * 100))
+                        ? Math.min(100, Math.round((stats.totalCorrect / stats.totalAttempts) * 100))
                           : 0
                         const estimatedScore = Math.round((successRate / 100) * 400)
                         const scoreColor = getScoreColor(estimatedScore)
@@ -323,72 +330,72 @@ export default function DashboardPage() {
                               </span>
                               <span className={`px-2 py-1 bg-gray-50 dark:bg-gray-700/50 rounded ${getPercentageColor(successRate)}`}>
                                 {successRate}% réussite
-                              </span>
-                            </div>
+                    </span>
+                  </div>
                             <div className={`pt-3 mt-2 border-t border-gray-200 dark:border-gray-700 p-2 rounded-lg border ${eligibleInfo.bgColor}`}>
                               <p className={`text-xs ${eligibleInfo.style}`}>
                                 {eligibleInfo.message}
                               </p>
-                            </div>
+                </div>
                           </>
                         )
                       })()}
-                    </div>
+                      </div>
                   </div>
-                </div>
+            </div>
 
-                {leaderboard.length > 0 && (
+            {leaderboard.length > 0 && (
                   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-6">
                     <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
                       <span>🏆</span>
                       <span>Classement</span>
                     </h2>
                     <div className="space-y-2">
-                      {leaderboard.map((entry, index) => {
-                        const isCurrentUser = entry.id === session?.user?.id
-                        const displayName = entry.name || entry.email.split('@')[0]
-                        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`
+                  {leaderboard.map((entry, index) => {
+                    const isCurrentUser = entry.id === session?.user?.id
+                    const displayName = entry.name || entry.email.split('@')[0]
+                    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`
                         const percentageColor = getPercentageColor(entry.successRate)
 
-                        return (
-                          <div
-                            key={entry.id}
+                    return (
+                      <div
+                        key={entry.id}
                             className={`flex items-center justify-between p-4 rounded-lg border transition-all ${
-                              isCurrentUser
+                          isCurrentUser
                                 ? 'bg-gray-50 dark:bg-gray-700/50 border-blue-400 dark:border-blue-600 shadow-md'
                                 : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
-                            }`}
-                          >
+                        }`}
+                      >
                             <div className="flex items-center gap-4 flex-1">
                               <span className="text-xl font-bold w-10 text-center">{medal}</span>
-                              <div className="flex-1">
+                          <div className="flex-1">
                                 <div className="font-semibold text-gray-800 dark:text-gray-200">
-                                  {displayName}
-                                  {isCurrentUser && (
+                              {displayName}
+                              {isCurrentUser && (
                                     <span className="ml-2 text-xs px-2 py-0.5 bg-blue-500 text-white rounded-full">
                                       Vous
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                  {entry.totalAttempts} tentatives
-                                </div>
-                              </div>
+                                </span>
+                              )}
                             </div>
-                            <div className="text-right">
-                              <div className={`text-2xl font-bold ${percentageColor}`}>
-                                {entry.successRate}%
-                              </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {entry.totalCorrect}/{entry.totalAttempts}
-                              </div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                              {entry.totalAttempts} tentatives
                             </div>
                           </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
+                        </div>
+                        <div className="text-right">
+                              <div className={`text-2xl font-bold ${percentageColor}`}>
+                            {entry.successRate}%
+                          </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {entry.totalCorrect}/{entry.totalAttempts}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="text-center space-y-4">
               <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
@@ -405,7 +412,7 @@ export default function DashboardPage() {
                     <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
                       Êtes-vous sûr de vouloir réinitialiser toutes vos questions ?<br />
                       <span className="text-xs text-gray-500 dark:text-gray-400">
-                        Cette action supprimera toutes vos statistiques et vous fera recommencer depuis le début.
+                      Cette action supprimera toutes vos statistiques et vous fera recommencer depuis le début.
                       </span>
                     </p>
                     <div className="flex gap-3 justify-center">
@@ -436,7 +443,9 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
-      </main>
+          </main>
+        </div>
+      </div>
     </div>
   )
 }

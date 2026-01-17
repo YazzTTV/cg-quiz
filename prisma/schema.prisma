@@ -32,6 +32,7 @@ model User {
   userQuestionStates   UserQuestionState[]
   reportedQuestions    Report[]
   flashcards          Flashcard[]
+  dailyChallengeAnswers UserDailyChallenge[]
 
   @@map("users")
 }
@@ -158,4 +159,58 @@ model Flashcard {
   @@index([userId])
   @@index([questionId])
   @@map("flashcards")
+}
+
+model DailyChallenge {
+  id          String   @id @default(uuid())
+  dayNumber   Int      @unique // Numéro du jour (1, 2, 3, ...)
+  prompt      String   // Question de logique/math
+  explanation String?  // Explication de la réponse
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  choices DailyChallengeChoice[]
+  userAnswers UserDailyChallenge[]
+
+  @@index([dayNumber])
+  @@index([publishedAt])
+  @@map("daily_challenges")
+}
+
+model DailyChallengeChoice {
+  id              String         @id @default(uuid())
+  dailyChallengeId String
+  text            String
+  isCorrect       Boolean
+  order           Int
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  dailyChallenge DailyChallenge @relation(fields: [dailyChallengeId], references: [id], onDelete: Cascade)
+
+  @@index([dailyChallengeId])
+  @@map("daily_challenge_choices")
+}
+
+model UserDailyChallenge {
+  id              String   @id @default(uuid())
+  userId          String
+  dailyChallengeId String
+  selectedChoiceId String?
+  isCorrect       Boolean?
+  answeredAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyChallenge DailyChallenge @relation(fields: [dailyChallengeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dailyChallengeId])
+  @@index([userId])
+  @@index([dailyChallengeId])
+  @@map("user_daily_challenges")
 }

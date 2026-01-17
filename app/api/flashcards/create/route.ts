@@ -77,6 +77,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Données invalides', details: error.issues }, { status: 400 })
     }
     console.error('Error in /api/flashcards/create:', error)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
+    const errorStack = error instanceof Error ? error.stack : undefined
+    console.error('Error details:', { errorMessage, errorStack })
+    return NextResponse.json({ 
+      error: 'Erreur serveur',
+      details: errorMessage 
+    }, { status: 500 })
   }
 }
