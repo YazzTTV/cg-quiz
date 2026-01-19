@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
-import { getRoom, updateRoom } from '@/lib/duo-rooms'
+import { Prisma } from '@prisma/client'
 
 // Fonction pour obtenir les questions (similaire au test blitz)
 async function getDuoQuestions(userId: string) {
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Code de salle requis' }, { status: 400 })
     }
 
-    const room = getRoom(code)
+    let room = await prisma.duoRoom.findUnique({ where: { code } })
     if (!room) {
       return NextResponse.json({ error: 'Salle introuvable' }, { status: 404 })
     }
@@ -172,18 +172,46 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'En attente du deuxième joueur' }, { status: 400 })
     }
 
-    // Si la partie n'a pas encore commencé, démarrer
-    if (room.status === 'waiting') {
+    const existingQuestions = room.questions as unknown as any[] | null
+
+    if (room.status === 'waiting' && room.hostId !== userId) {
+      return NextResponse.json({ error: 'En attente du démarrage par l’hôte' }, { status: 409 })
+    }
+
+    // Si la partie n'a pas encore commencé, tenter d'initialiser une seule fois
+    if (room.status === 'waiting' && !existingQuestions) {
       const questions = await getDuoQuestions(userId)
-      updateRoom(code, {
-        questions,
-        status: 'starting',
-        startedAt: new Date(),
+      const updated = await prisma.duoRoom.updateMany({
+        where: {
+          code,
+          status: 'waiting',
+          questions: { equals: Prisma.DbNull },
+        },
+        data: {
+          questions,
+          status: 'starting',
+          startedAt: new Date(),
+        },
       })
+
+      // Toujours relire la salle pour utiliser les questions stockées
+      room = await prisma.duoRoom.findUnique({ where: { code } })
+      if (!room || !room.questions) {
+        return NextResponse.json({ error: 'Questions indisponibles' }, { status: 500 })
+      }
+
+      // Si cette requête n'a pas gagné la course, ignorer les questions générées localement
+      if (updated.count === 0 && !room.questions) {
+        return NextResponse.json({ error: 'Questions indisponibles' }, { status: 500 })
+      }
+    }
+
+    if (!room.questions) {
+      return NextResponse.json({ error: 'Questions indisponibles' }, { status: 500 })
     }
 
     // Retourner les questions (sans les bonnes réponses)
-    const questionsForClient = room.questions!.map((q: any) => ({
+    const questionsForClient = (room.questions as any[]).map((q: any) => ({
       id: q.id,
       prompt: q.prompt,
       comprehensionText: q.comprehensionText,

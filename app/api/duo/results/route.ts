@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/app/api/auth/[...nextauth]/route'
-import { getRoom } from '@/lib/duo-rooms'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(req: NextRequest) {
@@ -17,7 +16,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Code de salle requis' }, { status: 400 })
     }
 
-    const room = getRoom(code)
+    const room = await prisma.duoRoom.findUnique({ where: { code } })
     if (!room) {
       return NextResponse.json({ error: 'Salle introuvable' }, { status: 404 })
     }
@@ -29,8 +28,12 @@ export async function GET(req: NextRequest) {
 
     // Récupérer les détails des réponses
     const results = []
-    if (room.questions) {
-      for (const question of room.questions) {
+    const questions = (room.questions as unknown as any[]) || []
+    const hostAnswers = (room.hostAnswers as Record<string, string>) || {}
+    const guestAnswers = (room.guestAnswers as Record<string, string>) || {}
+
+    if (questions.length > 0) {
+      for (const question of questions) {
         const correctChoice = await prisma.choice.findFirst({
           where: {
             questionId: question.id,
@@ -38,8 +41,8 @@ export async function GET(req: NextRequest) {
           },
         })
 
-        const hostAnswer = room.hostAnswers[question.id]
-        const guestAnswer = room.guestAnswers[question.id]
+        const hostAnswer = hostAnswers[question.id]
+        const guestAnswer = guestAnswers[question.id]
 
         results.push({
           questionId: question.id,
@@ -58,7 +61,7 @@ export async function GET(req: NextRequest) {
       guestScore: room.guestScore,
       hostName: room.hostName,
       guestName: room.guestName,
-      totalQuestions: room.questions?.length || 0,
+      totalQuestions: questions.length,
       results,
       isHost: room.hostId === userId,
     })

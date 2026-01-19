@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/app/api/auth/[...nextauth]/route'
-import { createRoom, getRoom, joinRoom } from '@/lib/duo-rooms'
+import { prisma } from '@/lib/prisma'
 
 // Créer une salle
 export async function POST(req: NextRequest) {
@@ -13,7 +13,33 @@ export async function POST(req: NextRequest) {
     const userId = session.user.id
     const userName = session.user.name || session.user.email || 'Joueur'
 
-    const room = createRoom(userId, userName)
+    let code = ''
+    for (let attempts = 0; attempts < 5; attempts++) {
+      const candidate = Math.floor(1000 + Math.random() * 9000).toString()
+      const existing = await prisma.duoRoom.findUnique({ where: { code: candidate } })
+      if (!existing) {
+        code = candidate
+        break
+      }
+    }
+
+    if (!code) {
+      return NextResponse.json({ error: 'Impossible de générer un code de salle' }, { status: 500 })
+    }
+
+    const room = await prisma.duoRoom.create({
+      data: {
+        code,
+        hostId: userId,
+        hostName: userName,
+        status: 'waiting',
+        currentQuestionIndex: 0,
+        hostAnswers: {},
+        guestAnswers: {},
+        hostScore: 0,
+        guestScore: 0,
+      },
+    })
 
     return NextResponse.json({ code: room.code })
   } catch (error) {
@@ -37,7 +63,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Code de salle requis' }, { status: 400 })
     }
 
-    let room = getRoom(code)
+    let room = await prisma.duoRoom.findUnique({ where: { code } })
 
     if (!room) {
       return NextResponse.json({ error: 'Salle introuvable' }, { status: 404 })
@@ -51,11 +77,28 @@ export async function GET(req: NextRequest) {
 
       // Rejoindre la salle comme invité
       const guestName = session.user.name || session.user.email || 'Joueur'
-      room = joinRoom(code, userId, guestName)
-      if (!room) {
+      const updated = await prisma.duoRoom.updateMany({
+        where: {
+          code,
+          guestId: null,
+        },
+        data: {
+          guestId: userId,
+          guestName,
+        },
+      })
+
+      if (updated.count === 0) {
         return NextResponse.json({ error: 'Impossible de rejoindre la salle' }, { status: 403 })
       }
+
+      room = await prisma.duoRoom.findUnique({ where: { code } })
+      if (!room) {
+        return NextResponse.json({ error: 'Salle introuvable' }, { status: 404 })
+      }
     }
+
+    const questions = (room.questions as unknown as any[]) || []
 
     // Retourner l'état de la salle (sans les bonnes réponses)
     const roomState = {
@@ -64,7 +107,7 @@ export async function GET(req: NextRequest) {
       guestName: room.guestName,
       status: room.status,
       currentQuestionIndex: room.currentQuestionIndex,
-      totalQuestions: room.questions?.length || 0,
+      totalQuestions: questions.length,
       isHost: room.hostId === userId,
       isGuest: room.guestId === userId,
       hasGuest: room.guestId !== null,

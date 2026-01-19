@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/app/api/auth/[...nextauth]/route'
-import { getRoom, updateRoom } from '@/lib/duo-rooms'
 import { prisma } from '@/lib/prisma'
 
 export async function POST(req: NextRequest) {
@@ -14,11 +13,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { code, questionId, choiceId } = body
 
-    if (!code || !questionId || !choiceId) {
+    if (!code || !questionId) {
       return NextResponse.json({ error: 'Données manquantes' }, { status: 400 })
     }
 
-    const room = getRoom(code)
+    const room = await prisma.duoRoom.findUnique({ where: { code } })
     if (!room) {
       return NextResponse.json({ error: 'Salle introuvable' }, { status: 404 })
     }
@@ -34,7 +33,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Vérifier que la question existe
-    const question = room.questions?.find((q: any) => q.id === questionId)
+    const questions = (room.questions as unknown as any[]) || []
+    const question = questions.find((q: any) => q.id === questionId)
     if (!question) {
       return NextResponse.json({ error: 'Question introuvable' }, { status: 404 })
     }
@@ -51,26 +51,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Réponse correcte introuvable' }, { status: 404 })
     }
 
-    const isCorrect = choiceId === correctChoice.id
+    const selectedChoiceId = typeof choiceId === 'string' ? choiceId : null
+    const isCorrect = selectedChoiceId === correctChoice.id
 
     // Enregistrer la réponse
+    const hostAnswers = (room.hostAnswers as Record<string, string>) || {}
+    const guestAnswers = (room.guestAnswers as Record<string, string>) || {}
+    let hostScore = room.hostScore
+    let guestScore = room.guestScore
+
     if (room.hostId === userId) {
-      room.hostAnswers[questionId] = choiceId
+      hostAnswers[questionId] = selectedChoiceId
       if (isCorrect) {
-        room.hostScore++
+        hostScore += 1
       }
     } else {
-      room.guestAnswers[questionId] = choiceId
+      guestAnswers[questionId] = selectedChoiceId
       if (isCorrect) {
-        room.guestScore++
+        guestScore += 1
       }
     }
 
-    updateRoom(code, {
-      hostAnswers: room.hostAnswers,
-      guestAnswers: room.guestAnswers,
-      hostScore: room.hostScore,
-      guestScore: room.guestScore,
+    await prisma.duoRoom.update({
+      where: { code },
+      data: {
+        hostAnswers,
+        guestAnswers,
+        hostScore,
+        guestScore,
+      },
     })
 
     return NextResponse.json({

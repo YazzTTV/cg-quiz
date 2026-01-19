@@ -41,7 +41,7 @@ export default function DuoPage() {
   const [roomState, setRoomState] = useState<RoomState | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [answers, setAnswers] = useState<Record<string, string | null>>({})
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [isAnswered, setIsAnswered] = useState(false)
   const [showRoomInterface, setShowRoomInterface] = useState(true)
@@ -49,6 +49,7 @@ export default function DuoPage() {
   const [isJoiningRoom, setIsJoiningRoom] = useState(false)
   const [joinCode, setJoinCode] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isSyncingGame, setIsSyncingGame] = useState(false)
   const [showReportModal, setShowReportModal] = useState(false)
 
   useEffect(() => {
@@ -96,6 +97,37 @@ export default function DuoPage() {
             }
           }
 
+          // Si la partie a démarré, synchroniser l'invité avec les questions
+          if (
+            showRoomInterface &&
+            state.hasGuest &&
+            (state.status === 'starting' || state.status === 'in_progress') &&
+            questions.length === 0 &&
+            !isSyncingGame
+          ) {
+            setIsSyncingGame(true)
+            try {
+              const startRes = await fetch('/api/duo/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: roomCode }),
+              })
+              const startData = await startRes.json()
+              if (startRes.ok && startData.questions) {
+                setQuestions(startData.questions)
+                setCurrentQuestionIndex(state.currentQuestionIndex || 0)
+                setAnswers({})
+                setIsAnswered(false)
+                setShowRoomInterface(false)
+                setTimeRemaining(startData.questions[state.currentQuestionIndex || 0]?.timeLimit || 0)
+              }
+            } catch (error) {
+              console.error('Erreur lors de la synchronisation de la partie:', error)
+            } finally {
+              setIsSyncingGame(false)
+            }
+          }
+
           // Si la partie est terminée, rediriger vers les résultats
           if (state.status === 'finished' && !showRoomInterface) {
             router.push(`/duo/results?code=${roomCode}`)
@@ -107,7 +139,7 @@ export default function DuoPage() {
     }, 1000) // Vérifier toutes les secondes
 
     return () => clearInterval(interval)
-  }, [roomCode, showRoomInterface, currentQuestionIndex, router])
+  }, [roomCode, showRoomInterface, currentQuestionIndex, questions, isSyncingGame, router])
 
   // Timer pour les questions
   useEffect(() => {
@@ -137,6 +169,20 @@ export default function DuoPage() {
 
     return () => clearInterval(interval)
   }, [currentQuestionIndex, questions, roomState?.status])
+
+  useEffect(() => {
+    if (showRoomInterface) return
+    const currentQuestion = questions[currentQuestionIndex]
+    if (!currentQuestion) return
+    setTimeRemaining(currentQuestion.timeLimit)
+  }, [currentQuestionIndex, questions, showRoomInterface])
+
+  useEffect(() => {
+    if (showRoomInterface) return
+    const currentQuestion = questions[currentQuestionIndex]
+    if (!currentQuestion) return
+    setIsAnswered(Object.prototype.hasOwnProperty.call(answers, currentQuestion.id))
+  }, [currentQuestionIndex, questions, answers, showRoomInterface])
 
   const createRoom = async () => {
     setIsCreatingRoom(true)
@@ -286,6 +332,7 @@ export default function DuoPage() {
           // Les deux joueurs ont répondu, on peut avancer
           setCurrentQuestionIndex(data.currentQuestionIndex)
           setIsAnswered(false)
+          setTimeRemaining(questions[data.currentQuestionIndex]?.timeLimit || 0)
         } else {
           // Attendre que l'autre joueur réponde
           // La synchronisation se fera via le polling
@@ -303,12 +350,30 @@ export default function DuoPage() {
 
     // Si aucune réponse n'a été donnée, marquer comme répondu (réponse vide)
     const currentQuestion = questions[currentQuestionIndex]
-    if (currentQuestion && !answers[currentQuestion.id]) {
-      setIsAnswered(true)
-      // Essayer de passer à la question suivante (sera automatique si les deux joueurs ont répondu)
-      setTimeout(() => {
-        handleNextQuestion()
-      }, 1000)
+    if (currentQuestion && !Object.prototype.hasOwnProperty.call(answers, currentQuestion.id)) {
+      try {
+        await fetch('/api/duo/answer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: roomCode,
+            questionId: currentQuestion.id,
+            choiceId: null,
+          }),
+        })
+      } catch (error) {
+        console.error('Erreur lors de la réponse automatique:', error)
+      } finally {
+        setAnswers((prev) => ({
+          ...prev,
+          [currentQuestion.id]: null,
+        }))
+        setIsAnswered(true)
+        // Essayer de passer à la question suivante (sera automatique si les deux joueurs ont répondu)
+        setTimeout(() => {
+          handleNextQuestion()
+        }, 1000)
+      }
     }
   }
 

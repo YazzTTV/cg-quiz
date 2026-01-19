@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/app/api/auth/[...nextauth]/route'
-import { getRoom, updateRoom } from '@/lib/duo-rooms'
+import { prisma } from '@/lib/prisma'
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Code de salle requis' }, { status: 400 })
     }
 
-    const room = getRoom(code)
+    const room = await prisma.duoRoom.findUnique({ where: { code } })
     if (!room) {
       return NextResponse.json({ error: 'Salle introuvable' }, { status: 404 })
     }
@@ -28,13 +28,16 @@ export async function POST(req: NextRequest) {
     }
 
     // Vérifier que les deux joueurs ont répondu à la question actuelle
-    const currentQuestion = room.questions?.[room.currentQuestionIndex]
+    const questions = (room.questions as unknown as any[]) || []
+    const currentQuestion = questions[room.currentQuestionIndex]
     if (!currentQuestion) {
       return NextResponse.json({ error: 'Question introuvable' }, { status: 404 })
     }
 
-    const hostAnswered = room.hostAnswers[currentQuestion.id] !== undefined
-    const guestAnswered = room.guestAnswers[currentQuestion.id] !== undefined
+    const hostAnswers = (room.hostAnswers as Record<string, string>) || {}
+    const guestAnswers = (room.guestAnswers as Record<string, string>) || {}
+    const hostAnswered = hostAnswers[currentQuestion.id] !== undefined
+    const guestAnswered = guestAnswers[currentQuestion.id] !== undefined
 
     // Si les deux joueurs ont répondu, passer à la question suivante
     if (hostAnswered && guestAnswered) {
@@ -42,16 +45,21 @@ export async function POST(req: NextRequest) {
 
       if (nextIndex >= (room.questions?.length || 0)) {
         // Partie terminée
-        updateRoom(code, {
-          status: 'finished',
-          currentQuestionIndex: nextIndex,
+        await prisma.duoRoom.update({
+          where: { code },
+          data: {
+            status: 'finished',
+            currentQuestionIndex: nextIndex,
+          },
         })
       } else {
         // Question suivante
-        updateRoom(code, {
-          currentQuestionIndex: nextIndex,
-          status: 'in_progress',
-          questionStartTime: new Date(),
+        await prisma.duoRoom.update({
+          where: { code },
+          data: {
+            currentQuestionIndex: nextIndex,
+            status: 'in_progress',
+          },
         })
       }
 

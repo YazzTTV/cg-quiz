@@ -16,6 +16,13 @@ enum QuestionStatus {
   REJECTED
 }
 
+enum DuoRoomStatus {
+  waiting
+  starting
+  in_progress
+  finished
+}
+
 model User {
   id              String    @id @default(uuid())
   email           String    @unique
@@ -213,4 +220,25 @@ model UserDailyChallenge {
   @@index([userId])
   @@index([dailyChallengeId])
   @@map("user_daily_challenges")
+}
+
+model DuoRoom {
+  id                   String         @id @default(uuid())
+  code                 String         @unique
+  hostId               String
+  hostName             String
+  guestId              String?
+  guestName            String?
+  status               DuoRoomStatus  @default(waiting)
+  currentQuestionIndex Int            @default(0)
+  questions            Json?
+  hostAnswers          Json?
+  guestAnswers         Json?
+  hostScore            Int            @default(0)
+  guestScore           Int            @default(0)
+  createdAt            DateTime       @default(now())
+  startedAt            DateTime?
+  updatedAt            DateTime       @updatedAt
+
+  @@map("duo_rooms")
 }
