@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     if (hostAnswered && guestAnswered) {
       const nextIndex = room.currentQuestionIndex + 1
 
-      if (nextIndex >= (room.questions?.length || 0)) {
+      if (nextIndex >= ((room.questions as any[])?.length || 0)) {
         // Partie terminée
         await prisma.duoRoom.update({
           where: { code },
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         currentQuestionIndex: nextIndex,
-        isFinished: nextIndex >= (room.questions?.length || 0),
+        isFinished: nextIndex >= ((room.questions as any[])?.length || 0),
         canAdvance: true,
       })
     } else {

@@ -55,8 +55,8 @@ export async function POST(req: NextRequest) {
     const isCorrect = selectedChoiceId === correctChoice.id
 
     // Enregistrer la réponse
-    const hostAnswers = (room.hostAnswers as Record<string, string>) || {}
-    const guestAnswers = (room.guestAnswers as Record<string, string>) || {}
+    const hostAnswers = (room.hostAnswers as Record<string, string | null>) || {}
+    const guestAnswers = (room.guestAnswers as Record<string, string | null>) || {}
     let hostScore = room.hostScore
     let guestScore = room.guestScore
 
