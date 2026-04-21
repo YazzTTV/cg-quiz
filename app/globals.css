@@ -120,3 +120,61 @@ body {
   color: #ef4444;
   filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.5));
 }
+
+/* Animation d'apparition au scroll pour la landing page */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+[data-reveal].is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes starDriftSlow {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-120px, -80px, 0);
+  }
+}
+
+@keyframes starDriftReverse {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(90px, 70px, 0);
+  }
+}
+
+@keyframes starTwinkle {
+  0%, 100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+
+.starfield-layer-slow {
+  animation: starDriftSlow 70s linear infinite, starTwinkle 6s ease-in-out infinite;
+}
+
+.starfield-layer-reverse {
+  animation: starDriftReverse 95s linear infinite, starTwinkle 8s ease-in-out infinite;
+}
+
+.premium-btn-glow {
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 250ms ease, transform 250ms ease, border-color 250ms ease;
+}
+
+.premium-btn-glow:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14), 0 0 24px rgba(255, 255, 255, 0.22);
+}

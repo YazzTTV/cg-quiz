@@ -71,6 +71,8 @@ export default function ReviewPage() {
     return []
   })
 
+  const firstName = session?.user?.name?.trim().split(/\s+/)[0] || 'Utilisateur'
+
   // Sauvegarder dans localStorage quand recentQuestionIds change
   useEffect(() => {
     if (typeof window !== 'undefined' && recentQuestionIds.length > 0) {
@@ -439,7 +441,7 @@ export default function ReviewPage() {
         {/* Section Révisées - Affichée seulement si showReviewOptions est true */}
         {showReviewOptions && (
           <div className="space-y-6 mb-6">
-            <h1 className="text-3xl font-bold mb-6">Révisées</h1>
+            <h1 className="text-3xl font-bold mb-6">Bonjour {firstName}</h1>
             {estimatedScore && (
               <div className="mb-4">
                 <ScoreEstimateBadge

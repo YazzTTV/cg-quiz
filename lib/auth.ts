@@ -2,6 +2,7 @@ import type { NextAuthConfig } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from './prisma'
 import bcrypt from 'bcrypt'
+import { randomUUID } from 'crypto'
 
 export const authOptions: NextAuthConfig = {
   providers: [
@@ -34,6 +35,29 @@ export const authOptions: NextAuthConfig = {
           id: user.id,
           email: user.email,
           name: user.name,
+        }
+      },
+    }),
+    CredentialsProvider({
+      id: 'guest',
+      name: 'Guest',
+      credentials: {},
+      async authorize() {
+        const guestEmail = `guest.${Date.now()}.${randomUUID()}@cg-quiz.local`
+        const guestPasswordHash = await bcrypt.hash(randomUUID(), 4)
+
+        const guestUser = await prisma.user.create({
+          data: {
+            email: guestEmail,
+            passwordHash: guestPasswordHash,
+            name: 'Invité',
+          },
+        })
+
+        return {
+          id: guestUser.id,
+          email: guestUser.email,
+          name: guestUser.name,
         }
       },
     }),
