@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Nav } from '@/components/Nav'
-import DailyChallenge from '@/components/DailyChallenge'
 
 type Stats = {
   dueNow: number
@@ -254,12 +253,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Nav />
       <div className="container mx-auto px-4 py-8">
-        <div className="flex gap-6">
-          {/* Défi du jour sur le côté gauche */}
-          <DailyChallenge />
-          
-          {/* Contenu principal */}
-          <main className="flex-1 max-w-4xl">
+          <main className="mx-auto max-w-4xl">
         <h1 className="text-4xl font-bold mb-8 text-gray-800 dark:text-gray-200">Dashboard</h1>
 
         {loading ? (
@@ -444,7 +438,6 @@ export default function DashboardPage() {
           </div>
         )}
           </main>
-        </div>
       </div>
     </div>
   )

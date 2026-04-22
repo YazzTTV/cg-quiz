@@ -72,6 +72,11 @@ export default function ReviewPage() {
   })
 
   const firstName = session?.user?.name?.trim().split(/\s+/)[0] || 'Utilisateur'
+  const eliteCardClass =
+    'rounded-lg border border-amber-200 bg-white/95 p-6 shadow-[0_10px_28px_rgba(15,23,42,0.08)]'
+  const eliteMutedTextClass = 'text-slate-600'
+  const elitePrimaryCtaClass =
+    'rounded-lg border border-amber-200/50 bg-gradient-to-r from-amber-300 via-amber-100 to-yellow-300 px-6 py-3 font-semibold text-slate-900 hover:brightness-105'
 
   // Sauvegarder dans localStorage quand recentQuestionIds change
   useEffect(() => {
@@ -414,7 +419,7 @@ export default function ReviewPage() {
 
   if (status === 'loading' || !session) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-gradient-to-br from-[#0f1f3d] via-[#1f4378] to-[#102744] text-slate-900">
         <Nav />
         <div className="container mx-auto px-4 py-8">
           <div className="flex gap-6">
@@ -429,7 +434,7 @@ export default function ReviewPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-[#0f1f3d] via-[#1f4378] to-[#102744] text-slate-900">
       <Nav />
       <div className="container mx-auto px-4 py-8">
         <div className="flex gap-6">
@@ -441,7 +446,7 @@ export default function ReviewPage() {
         {/* Section Révisées - Affichée seulement si showReviewOptions est true */}
         {showReviewOptions && (
           <div className="space-y-6 mb-6">
-            <h1 className="text-3xl font-bold mb-6">Bonjour {firstName}</h1>
+            <h1 className="mb-6 text-3xl font-bold text-slate-900">Bonjour {firstName}</h1>
             {estimatedScore && (
               <div className="mb-4">
                 <ScoreEstimateBadge
@@ -454,9 +459,9 @@ export default function ReviewPage() {
               </div>
             )}
             
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <div className={eliteCardClass}>
               <h2 className="text-xl font-semibold mb-4">📚 Révisions espacées</h2>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
+              <p className={`mb-4 ${eliteMutedTextClass}`}>
                 Réviser vos questions avec le système de révisions espacées (SRS).
               </p>
               <button
@@ -465,62 +470,62 @@ export default function ReviewPage() {
                   setShowReviewOptions(false)
                   loadNextQuestion()
                 }}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className={elitePrimaryCtaClass}
               >
                 Commencer à réviser
               </button>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <div className={eliteCardClass}>
               <h2 className="text-xl font-semibold mb-4">📝 Test Blanc</h2>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
+              <p className={`mb-4 ${eliteMutedTextClass}`}>
                 Entraînez-vous dans les conditions réelles de l'examen IAE avec un test blanc complet.
                 Vous avez 3 heures pour répondre à toutes les questions.
               </p>
               <a
                 href="/test-blanc"
-                className="inline-block px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                className={elitePrimaryCtaClass}
               >
                 Commencer un test blanc
               </a>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <div className={eliteCardClass}>
               <h2 className="text-xl font-semibold mb-4">⚡ Test Blitz</h2>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
+              <p className={`mb-4 ${eliteMutedTextClass}`}>
                 Mode ultra rapide pour s'entraîner efficacement ! Questions sélectionnées au prorata.
               </p>
               <a
                 href="/test-blitz"
-                className="inline-block px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                className={elitePrimaryCtaClass}
               >
                 Commencer un test blitz
               </a>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <div className={eliteCardClass}>
               <h2 className="text-xl font-semibold mb-4">❤️ Mode Survie</h2>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
+              <p className={`mb-4 ${eliteMutedTextClass}`}>
                 Questions en boucle sans système SRS. Vous commencez avec 3 cœurs et perdez une vie à chaque erreur. 
                 Le but est d'aller le plus loin possible avant de perdre toutes vos vies !
               </p>
               <button
                 onClick={startSurvivalMode}
-                className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                className={elitePrimaryCtaClass}
               >
                 Commencer le mode survie
               </button>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <div className={eliteCardClass}>
               <h2 className="text-xl font-semibold mb-4">⚔️ Mode Duo</h2>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
+              <p className={`mb-4 ${eliteMutedTextClass}`}>
                 Affrontez un ami dans un test similaire au test blitz ! Chaque question a un temps limité adaptatif selon sa difficulté.
                 Le joueur avec le meilleur score gagne !
               </p>
               <button
                 onClick={() => router.push('/duo')}
-                className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+                className={elitePrimaryCtaClass}
               >
                 Commencer le mode duo
               </button>
@@ -540,7 +545,7 @@ export default function ReviewPage() {
                     setMode('srs')
                   }
                 }}
-                className="px-4 py-2 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+                className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-amber-50"
               >
                 ← Retour aux options
               </button>
@@ -590,10 +595,10 @@ export default function ReviewPage() {
 
             {/* Écran de fin de partie mode survie */}
             {gameOver && mode === 'survival' && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
+              <div className={`${eliteCardClass} text-center`}>
                 <h2 className="text-3xl font-bold mb-4 text-red-600 dark:text-red-400">💔 Partie terminée !</h2>
                 <p className="text-xl mb-6">Vous avez perdu toutes vos vies.</p>
-                <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-6 mb-6">
+                <div className="mb-6 rounded-lg border border-amber-200 bg-white p-6">
                   <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                     Score final: {survivalScore} question{survivalScore > 1 ? 's' : ''}
                   </p>
@@ -601,13 +606,13 @@ export default function ReviewPage() {
                 <div className="flex gap-4 justify-center">
                   <button
                     onClick={startSurvivalMode}
-                    className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                    className={elitePrimaryCtaClass}
                   >
                     Rejouer
                   </button>
                   <button
                     onClick={resetSurvivalMode}
-                    className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                    className="rounded-lg border border-amber-300 bg-white px-6 py-3 text-slate-700 hover:bg-amber-50"
                   >
                     Retour aux options
                   </button>
@@ -617,9 +622,9 @@ export default function ReviewPage() {
 
             {question && !gameOver && (
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <div className={eliteCardClass}>
               {mode !== 'survival' && (
-                <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+                <div className={`mb-4 text-sm ${eliteMutedTextClass}`}>
                   Vu {userState?.timesSeen || 0} fois • Correct {userState?.timesCorrect || 0} fois
                 </div>
               )}
@@ -640,13 +645,13 @@ export default function ReviewPage() {
                 {question.choices.map((choice, index) => {
                   const isSelected = selectedChoiceId === choice.id
                   const isCorrectChoice = correctChoiceId === choice.id
-                  let bgColor = 'bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600'
+                  let bgColor = 'bg-white hover:bg-amber-50 border-slate-200'
 
                   if (isAnswered) {
                     if (isCorrectChoice) {
-                      bgColor = 'bg-green-200 dark:bg-green-800'
+                      bgColor = 'bg-emerald-50 border-emerald-300'
                     } else if (isSelected && !isCorrect) {
-                      bgColor = 'bg-red-200 dark:bg-red-800'
+                      bgColor = 'bg-red-50 border-red-300'
                     }
                   }
 
@@ -655,7 +660,7 @@ export default function ReviewPage() {
                       key={choice.id}
                       onClick={() => !isAnswered && handleAnswer(choice.id)}
                       disabled={isAnswered || loading}
-                      className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${bgColor} ${
+                      className={`w-full rounded-lg border-2 p-4 text-left transition-colors ${bgColor} ${
                         !isAnswered ? 'cursor-pointer' : 'cursor-default'
                       } ${loading ? 'opacity-50' : ''}`}
                     >
@@ -669,17 +674,17 @@ export default function ReviewPage() {
               {isAnswered && (
                 <div className="mt-6 space-y-4">
                   <div
-                    className={`p-4 rounded-lg ${
+                    className={`rounded-lg p-4 ${
                       isCorrect
-                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                        : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                        ? 'bg-emerald-50 text-emerald-800'
+                        : 'bg-red-50 text-red-800'
                     }`}
                   >
                     <strong>{isCorrect ? '✓ Correct !' : '✗ Incorrect'}</strong>
                   </div>
 
                   {explanation && (
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-slate-800">
                       <strong className="block mb-2">Explication :</strong>
                       <p>{explanation}</p>
                     </div>
