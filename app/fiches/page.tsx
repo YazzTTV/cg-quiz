@@ -95,6 +95,73 @@ export default function FichesPage() {
     })
   }
 
+  const renderInlineMarkdown = (text: string) => {
+    const parts = text.split(/(\*\*[^*]+\*\*)/g)
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={index}>{part.slice(2, -2)}</strong>
+      }
+      return <span key={index}>{part}</span>
+    })
+  }
+
+  const renderAiContent = (content: string) => {
+    const lines = content.split('\n')
+    const nodes: React.ReactNode[] = []
+    let listItems: string[] = []
+
+    const flushList = (keyPrefix: string) => {
+      if (listItems.length === 0) return
+      nodes.push(
+        <ul key={`${keyPrefix}-list-${nodes.length}`} className="mb-3 list-disc pl-5">
+          {listItems.map((item, idx) => (
+            <li key={`${keyPrefix}-li-${idx}`} className="mb-1 leading-relaxed">
+              {renderInlineMarkdown(item)}
+            </li>
+          ))}
+        </ul>
+      )
+      listItems = []
+    }
+
+    lines.forEach((line, index) => {
+      const trimmed = line.trim()
+
+      if (!trimmed) {
+        flushList('empty')
+        nodes.push(<div key={`spacer-${index}`} className="h-2" />)
+        return
+      }
+
+      const bulletMatch = trimmed.match(/^[-•]\s+(.*)$/)
+      if (bulletMatch) {
+        listItems.push(bulletMatch[1])
+        return
+      }
+
+      flushList('line')
+
+      const numberedMatch = trimmed.match(/^(\d+)\.\s+(.*)$/)
+      if (numberedMatch) {
+        nodes.push(
+          <p key={`num-${index}`} className="mb-2 leading-relaxed">
+            <strong>{numberedMatch[1]}.</strong> {renderInlineMarkdown(numberedMatch[2])}
+          </p>
+        )
+        return
+      }
+
+      nodes.push(
+        <p key={`line-${index}`} className="mb-2 leading-relaxed">
+          {renderInlineMarkdown(trimmed)}
+        </p>
+      )
+    })
+
+    flushList('end')
+    return nodes
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -109,7 +176,7 @@ export default function FichesPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Nav />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8" data-tutorial="fiches-overview">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-3xl font-bold mb-6">Mes Fiches Mémo</h1>
 
@@ -212,10 +279,8 @@ export default function FichesPage() {
                       </div>
                       {selectedFlashcard.aiContent ? (
                         <div className="p-4 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-gray-700 dark:to-gray-800 rounded-lg border border-purple-200 dark:border-purple-800">
-                          <div className="prose prose-sm dark:prose-invert max-w-none">
-                            <div className="whitespace-pre-wrap text-gray-700 dark:text-gray-300">
-                              {selectedFlashcard.aiContent}
-                            </div>
+                          <div className="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-gray-300">
+                            {renderAiContent(selectedFlashcard.aiContent)}
                           </div>
                         </div>
                       ) : (

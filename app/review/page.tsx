@@ -247,6 +247,7 @@ export default function ReviewPage() {
         setIsCorrect(data.isCorrect)
         setCorrectChoiceId(data.correctChoiceId)
         setExplanation(data.explanation)
+        window.dispatchEvent(new Event('tutorial:answer-submitted'))
         
         // Gestion du mode survie
         if (mode === 'survival') {
@@ -300,6 +301,7 @@ export default function ReviewPage() {
 
       if (res.ok) {
         setIsFlashcardSaved(true)
+        window.dispatchEvent(new Event('tutorial:flashcard-saved'))
         // La fiche a été créée ou existait déjà - dans les deux cas, on la marque comme sauvegardée
       } else {
         console.error('Erreur lors de la sauvegarde:', data)
@@ -445,10 +447,10 @@ export default function ReviewPage() {
           <main className="flex-1 max-w-2xl">
         {/* Section Révisées - Affichée seulement si showReviewOptions est true */}
         {showReviewOptions && (
-          <div className="space-y-6 mb-6">
+          <div className="space-y-6 mb-6" data-tutorial="review-modes">
             <h1 className="mb-6 text-3xl font-bold text-slate-900">Bonjour {firstName}</h1>
             {estimatedScore && (
-              <div className="mb-4">
+              <div className="mb-4" data-tutorial="review-indicators">
                 <ScoreEstimateBadge
                   score={estimatedScore.score}
                   accuracy={estimatedScore.accuracy}
@@ -469,8 +471,10 @@ export default function ReviewPage() {
                   setMode('srs')
                   setShowReviewOptions(false)
                   loadNextQuestion()
+                  window.dispatchEvent(new Event('tutorial:srs-started'))
                 }}
                 className={elitePrimaryCtaClass}
+                data-tutorial="review-start-srs"
               >
                 Commencer à réviser
               </button>
@@ -544,8 +548,10 @@ export default function ReviewPage() {
                     setShowReviewOptions(true)
                     setMode('srs')
                   }
+                  window.dispatchEvent(new Event('tutorial:review-back'))
                 }}
                 className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-amber-50"
+                data-tutorial="review-back-options"
               >
                 ← Retour aux options
               </button>
@@ -641,7 +647,7 @@ export default function ReviewPage() {
 
               <h2 className="text-2xl font-bold mb-6">{question.prompt}</h2>
 
-              <div className="space-y-3">
+              <div className="space-y-3" data-tutorial="review-answer-choices">
                 {question.choices.map((choice, index) => {
                   const isSelected = selectedChoiceId === choice.id
                   const isCorrectChoice = correctChoiceId === choice.id
@@ -728,6 +734,7 @@ export default function ReviewPage() {
                       <button
                         onClick={handleSaveFlashcard}
                         disabled={isFlashcardSaved || savingFlashcard}
+                        data-tutorial="review-save-flashcard"
                         className={`px-4 py-2 rounded-lg font-medium transition-colors ml-4 ${
                           isFlashcardSaved
                             ? 'bg-green-500 text-white cursor-default'

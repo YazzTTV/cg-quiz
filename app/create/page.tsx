@@ -115,7 +115,7 @@ export default function CreatePage() {
   return (
     <div className="min-h-screen">
       <Nav />
-      <main className="max-w-2xl mx-auto px-4 py-16">
+      <main className="max-w-2xl mx-auto px-4 py-16" data-tutorial="create-form">
         <h1 className="text-3xl font-bold mb-8">Créer une question</h1>
 
         {success && (

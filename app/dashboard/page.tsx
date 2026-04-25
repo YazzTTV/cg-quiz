@@ -253,7 +253,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Nav />
       <div className="container mx-auto px-4 py-8">
-          <main className="mx-auto max-w-4xl">
+          <main className="mx-auto max-w-4xl" data-tutorial="dashboard-indicators">
         <h1 className="text-4xl font-bold mb-8 text-gray-800 dark:text-gray-200">Dashboard</h1>
 
         {loading ? (
